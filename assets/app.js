@@ -1,0 +1,184 @@
+// app.js — switchTab, sidebar, detección de dispositivo, modo desarrollador (siempre cargado)
+
+/* ============================================================ TAB SWITCH */
+function switchTab(name, el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  if(el) el.classList.add('active');
+}
+
+/* ============================================================ INIT */
+updateDerived();
+updateCompDerived();
+drawProbeta(0,'elastic');
+drawCompProbeta(0);
+applyPreset2(1,'acero');
+applyPreset2(2,'aluminio');
+applyPresetComp0();   // FIX #2: sincronizar preset inicial de compresión con Acero A36
+renderSavedList();
+setTimeout(()=>{ renderCompare(); renderTemp(); },200);
+dzInit();
+frInit();
+ftInit();
+flInit();
+
+
+/* ============================================================ RESPONSIVE / DEVICE DETECTION v5 */
+(function() {
+  function detectDevice() {
+    const ua = navigator.userAgent;
+    const w = window.innerWidth;
+    const isTabletUA = /iPad|tablet|Kindle|PlayBook/i.test(ua) || (/Android/i.test(ua) && !/Mobile/i.test(ua));
+    const isMobileUA = /iPhone|iPod|Android.*Mobile|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+    const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    const isTablet = isTabletUA || (isTouch && w > 720 && w <= 1200);
+    // FIX (detección de dispositivo): isMobile se evaluaba antes que isTablet en el
+    // if/else de más abajo, y como isMobile solo miraba el ancho (w<=720) sin excluir
+    // los casos ya confirmados como tablet por User-Agent, un iPad o tablet Android en
+    // modo Split View / multitarea (viewport angosto) quedaba mal etiquetado como "Móvil".
+    // Ahora isMobile respeta la detección explícita de tablet por UA.
+    const isMobile = isMobileUA || (!isTabletUA && w <= 720);
+    const orientation = window.innerWidth > window.innerHeight ? 'horizontal' : 'vertical';
+
+    const icon  = document.getElementById('deviceIcon');
+    const label = document.getElementById('deviceLabel');
+    const badge = document.getElementById('deviceBadge');
+    if (!icon || !label) return;
+
+    let type, iconSVG, color;
+    if (isMobile) {
+      type = 'Móvil';
+      iconSVG = '<rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.01" stroke-width="3"/>';
+      color = '#c8780a';
+    } else if (isTablet) {
+      type = 'Tablet';
+      iconSVG = '<rect x="4" y="2" width="16" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.01" stroke-width="3"/>';
+      color = '#7b2fa8';
+    } else {
+      type = 'Escritorio';
+      iconSVG = '<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>';
+      color = 'var(--accent)';
+    }
+
+    const oriLabel = isMobile || isTablet ? ` · ${orientation === 'horizontal' ? '⟺' : '↕'}` : '';
+    const touchLabel = isTouch && !isMobile ? ' · táctil' : '';
+    label.textContent = type + oriLabel + touchLabel;
+    icon.innerHTML = iconSVG;
+    icon.style.stroke = color;
+    if (badge) badge.title = `UA: ${ua.slice(0,80)}… | ${w}×${window.innerHeight}px | touch:${isTouch}`;
+
+    // Ajustar comportamiento según dispositivo
+    document.body.dataset.device = isMobile ? 'mobile' : isTablet ? 'tablet' : 'desktop';
+  }
+  detectDevice();
+  window.addEventListener('resize', detectDevice);
+  window.addEventListener('orientationchange', () => setTimeout(detectDevice, 200));
+})();
+
+/* ============================================================ SIDEBAR DRAWER */
+function openSidebar() {
+  // Find the active page's sidebar
+  const activePage = document.querySelector('.page.active');
+  if (!activePage) return;
+  const sidebar = activePage.querySelector('.sidebar');
+  if (sidebar) sidebar.classList.add('open');
+  const overlay = document.getElementById('drawerOverlay');
+  if (overlay) overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeSidebar() {
+  document.querySelectorAll('.sidebar').forEach(s => s.classList.remove('open'));
+  const overlay = document.getElementById('drawerOverlay');
+  if (overlay) overlay.classList.remove('open');
+  document.body.style.overflow = '';
+}
+// Close sidebar when tab changes
+const origSwitchTab = window.switchTab;
+window.switchTab = function(name, el) {
+  closeSidebar();
+  origSwitchTab(name, el);
+};
+
+/* ============================================================ TEST PANEL */
+// FIX #27: el panel de test es una herramienta de QA para el docente, no para
+// los alumnos -- antes había un botón "🧪 Tests" siempre visible en el header
+// para cualquiera que abriera el simulador. Ahora el botón arranca oculto
+// (display:none) y el número de versión funciona como gatillo de "modo
+// desarrollador": 5 clicks en menos de 2 segundos muestran/ocultan el botón.
+let verClickCount = 0;
+let verClickTimer = null;
+function handleVerBadgeClick() {
+  verClickCount++;
+  if (verClickTimer) clearTimeout(verClickTimer);
+  verClickTimer = setTimeout(() => { verClickCount = 0; }, 2000);
+  if (verClickCount >= 5) {
+    verClickCount = 0;
+    clearTimeout(verClickTimer);
+    const btn = document.getElementById('testHeaderBtn');
+    if (!btn) return;
+    const showing = btn.style.display !== 'none';
+    btn.style.display = showing ? 'none' : 'inline-flex';
+    if (showing) {
+      const panel = document.getElementById('testPanel');
+      if (panel) panel.style.display = 'none';
+    }
+  }
+}
+// v2.8 (fix): testSuite/runAllTests viven en tests.js (~485 líneas), un archivo
+// aparte que NO se carga en el arranque de la página -- solo el docente en modo
+// desarrollador llega a necesitarlo. La versión anterior de este fix pasaba
+// `runAllTests` como argumento a ensureTestsLoaded(), pero ese argumento se
+// evalúa ANTES de que tests.js termine de cargar (todavía es `undefined` en
+// ese momento), así que el callback terminaba siendo undefined() y no hacía
+// nada -- por eso el botón "Ejecutar todos los tests" no mostraba resultados.
+// Ahora `runAllTests` es su propio "loader": si tests.js no cargó, lo inyecta
+// y se vuelve a llamar a sí misma apenas termina -- en ese momento ya quedó
+// redefinida por la función real que trae tests.js, así que la 2da llamada
+// ejecuta la lógica de verdad. Funciona sin importar qué botón se toque primero.
+let testsScriptLoaded = false;
+let testsScriptLoading = false;
+function runAllTests() {
+  if (testsScriptLoading) return;
+  testsScriptLoading = true;
+  const s = document.createElement('script');
+  s.src = 'assets/tests.js';
+  s.onload = () => {
+    testsScriptLoaded = true;
+    testsScriptLoading = false;
+    runAllTests(); // esta llamada ya ejecuta la versión real (tests.js la redefinió)
+  };
+  s.onerror = () => {
+    testsScriptLoading = false;
+    const log = document.getElementById('testLog');
+    if (log) log.textContent = 'No se pudo cargar tests.js (¿se movió el archivo o se abrió sin las demás piezas de la carpeta?).';
+  };
+  document.head.appendChild(s);
+}
+function toggleTestPanelFromHeader() {
+  const panel = document.getElementById('testPanel');
+  if (!panel) return;
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  if (panel.style.display === 'block') {
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    runAllTests();
+  }
+}
+function toggleTestPanel() {
+  const body = document.getElementById('testPanelBody');
+  const icon = document.getElementById('tpToggleIcon');
+  if (!body) return;
+  body.classList.toggle('open');
+  icon.textContent = body.classList.contains('open') ? '▲' : '▼';
+}
+function clearTestLog() {
+  const log = document.getElementById('testLog');
+  if (log) log.innerHTML = 'Log limpiado.';
+  const grid = document.getElementById('testGrid');
+  if (grid) grid.innerHTML = '';
+  const summary = document.getElementById('testSummary');
+  if (summary) summary.innerHTML = '';
+  const badge = document.getElementById('tpBadge');
+  if (badge) { badge.textContent = '—'; badge.style.background = ''; badge.style.color = ''; }
+}
+

@@ -1,0 +1,1615 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- v3.1: agregado tab "Fractura, fatiga y fluencia" completo (Fractura, Fatiga y Fluencia en caliente con todos sus subtemas) -->
+<title>Simulador de Ensayos Mecánicos 3.11 — Materiales y Ensayos</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeSidebar()"></div>
+
+<header>
+  <h1>Simulador de Ensayos</h1>
+  <span class="ver" id="verBadge" onclick="handleVerBadgeClick()" style="cursor:default;user-select:none">3.11</span>
+  <span class="subtitle">Materiales y Ensayos</span>
+  <button id="fichaHeaderBtn" onclick="openFichaPicker()" style="background:var(--accent);color:#fff;border:none;border-radius:var(--radius);padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;margin-left:auto">📋 Ficha técnica</button>
+  <button id="testHeaderBtn" onclick="toggleTestPanelFromHeader()" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:3px 9px;font-size:11px;color:var(--muted);cursor:pointer">🧪 Tests</button>
+  <span class="device-badge" id="deviceBadge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="deviceIcon" style="width:13px;height:13px"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg><span id="deviceLabel">Escritorio</span></span>
+</header>
+
+<div class="tabbar">
+  <button class="tab active" onclick="switchTab('destructivo',this)">Ensayo destructivo</button>
+  <button class="tab" onclick="switchTab('dureza',this)">Ensayo no destructivo</button>
+  <button class="tab" onclick="switchTab('rotura',this)">Fractura, fatiga y fluencia</button>
+</div>
+
+<!-- ================================================================ TAB 1: ENSAYO DESTRUCTIVO -->
+<div class="page active" id="tab-destructivo">
+  <aside class="sidebar">
+<div style="display:flex;justify-content:flex-end;margin-bottom:8px;"><button class="drawer-close-btn" onclick="closeSidebar()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted);padding:4px 8px;line-height:1">✕</button></div>
+    <div class="sec">
+      <div class="sec-title">Ensayo destructivo</div>
+      <div class="note" style="margin-top:0">Ensayos que llevan la probeta hasta la rotura o falla. Elegí una sección en el panel principal para explorar cada ensayo.</div>
+    </div>
+
+    <!-- 1 TRACCIÓN -->
+    <div class="ed-sub-ctrl active" id="ed_ctrl_traccion">
+    <div class="sec">
+      <div class="sec-title">Datos de la probeta</div>
+      <div class="field">
+        <label>Longitud original <code>l₀</code><button type="button" class="help-btn" onclick="showHelp('l0',event)">?</button></label>
+        <div class="row2">
+          <input type="number" id="e_l0" value="50" min="1" max="1000" step="0.1" oninput="updateDerived()">
+          <select id="e_l0u" onchange="updateDerived()"><option value="mm">mm</option><option value="cm">cm</option><option value="in">pulgadas</option></select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Diámetro <code>d₀</code> (probeta cilíndrica)<button type="button" class="help-btn" onclick="showHelp('d0',event)">?</button></label>
+        <div class="row2">
+          <input type="number" id="e_d0" value="12.8" min="0.1" max="200" step="0.1" oninput="updateDerived()">
+          <select id="e_d0u" onchange="updateDerived()"><option value="mm">mm</option><option value="cm">cm</option><option value="in">pulg</option></select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Área directa <code>A₀</code> (vacío = usa diámetro)<button type="button" class="help-btn" onclick="showHelp('a0',event)">?</button></label>
+        <div class="row2">
+          <input type="number" id="e_a0" placeholder="Calculada" min="0.01" step="0.01" oninput="updateDerived()">
+          <select id="e_a0u" onchange="updateDerived()"><option value="mm2">mm²</option><option value="cm2">cm²</option><option value="in2">in²</option></select>
+        </div>
+      </div>
+      <div class="derived-grid">
+        <div class="dcard"><div class="dl">l₀ (mm)<button type="button" class="help-btn" onclick="showHelp('l0',event)">?</button></div><div class="dv" id="dL0">50.0</div></div>
+        <div class="dcard"><div class="dl">A₀ (mm²)<button type="button" class="help-btn" onclick="showHelp('a0',event)">?</button></div><div class="dv" id="dA0">128.7</div></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-title">Propiedades del material</div>
+      <div class="field">
+        <label>Preset<button type="button" class="help-btn" onclick="showHelp('preset',event)">?</button></label>
+        <select id="e_preset" onchange="applyPreset('e')">
+          <option value="">— Ingreso manual —</option>
+          <optgroup label="Aceros y aleaciones">
+            <option value="acero">Acero estructural A36</option>
+            <option value="aceroinox">Acero Inoxidable 304</option>
+            <option value="molibdeno">Molibdeno</option>
+          </optgroup>
+          <optgroup label="Metales no ferrosos">
+            <option value="aluminio">Aluminio 6061</option>
+            <option value="cobre">Cobre recocido</option>
+            <option value="titanio">Titanio Ti-6Al-4V</option>
+            <option value="niquel">Níquel</option>
+            <option value="magnesio">Magnesio AZ31</option>
+            <option value="laton">Latón</option>
+            <option value="zinc">Zinc</option>
+            <option value="tungsteno">Tungsteno</option>
+          </optgroup>
+          <optgroup label="Metales preciosos">
+            <option value="oro">Oro</option>
+            <option value="plata">Plata</option>
+            <option value="plomo">Plomo</option>
+          </optgroup>
+          <optgroup label="Frágiles y polímeros">
+            <option value="fragil">Hierro fundido gris (frágil)</option>
+            <option value="ceramica">Cerámica Al₂O₃</option>
+            <option value="carbono">Fibra de carbono</option>
+            <option value="hormigon">Hormigón</option>
+            <option value="madera">Madera de roble</option>
+            <option value="pino">Pino</option>
+            <option value="algarrobo">Algarrobo</option>
+            <option value="quebracho">Quebracho colorado</option>
+            <option value="nylon">Nylon PA6</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="field"><label>Módulo de elasticidad <code>E</code> (GPa)<button type="button" class="help-btn" onclick="showHelp('E',event)">?</button></label>
+        <input type="number" id="e_E" value="207" min="1" max="1000" step="1"></div>
+      <div class="field"><label>Límite elástico <code>σ_y</code> (MPa) — 0 si frágil<button type="button" class="help-btn" onclick="showHelp('sy',event)">?</button></label>
+        <input type="number" id="e_sy" value="250" min="0" max="3000" step="1"></div>
+      <div class="field"><label>Resistencia a la tracción <code>TS</code> (MPa)<button type="button" class="help-btn" onclick="showHelp('ts',event)">?</button></label>
+        <input type="number" id="e_ts" value="450" min="1" max="3000" step="1"></div>
+      <div class="field"><label>Ductilidad <code>%EL</code> (%)<button type="button" class="help-btn" onclick="showHelp('el',event)">?</button></label>
+        <input type="number" id="e_el" value="20" min="0.01" max="100" step="0.1"></div>
+      <div class="field"><label>Coeficiente de Poisson <code>ν</code><button type="button" class="help-btn" onclick="showHelp('nu',event)">?</button></label>
+        <input type="number" id="e_nu" value="0.30" min="0.01" max="0.49" step="0.01"></div>
+      <label class="check-row"><input type="checkbox" id="e_fluencia" checked> Mostrar discontinuidad de fluencia<button type="button" class="help-btn" onclick="showHelp('fluencia',event)">?</button></label>
+      <div class="info-bar" id="e_warnSyTs" style="display:none;margin-top:8px;border-left-color:var(--neck)"></div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-title">Control de ensayo</div>
+      <div class="speed-row">
+        <span>Velocidad<button type="button" class="help-btn" onclick="showHelp('speed',event)">?</button></span>
+        <input type="range" id="e_speed" min="0.5" max="6" step="0.5" value="2" oninput="document.getElementById('e_spLabel').textContent=this.value+'×'">
+        <span id="e_spLabel">2×</span>
+      </div>
+      <button class="btn-primary" id="e_playBtn" onclick="togglePlay()">▶ Iniciar ensayo</button>
+      <button class="discharge-btn" id="e_dischargeBtn" onclick="triggerDischarge()" style="width:100%;margin-bottom:5px;display:none">⬇ Descargar (ver deformación residual)</button>
+      <button class="btn-secondary" onclick="resetSim()">↺ Reiniciar</button>
+      <button class="btn-secondary" onclick="exportChart()">⬇ Exportar imagen</button>
+    </div>
+
+    <div class="sec">
+      <div class="sec-title">Coeficiente de Poisson en tiempo real<button type="button" class="help-btn" onclick="showHelp('nu',event)">?</button></div>
+      <div class="poisson-viz" id="poissonViz">
+        <div style="font-size:12px;color:var(--muted);text-align:center">El material se adelgaza lateralmente al estirarse</div>
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0">
+          <div style="text-align:center;min-width:80px">
+            <div style="font-size:10px;color:var(--muted)">Original</div>
+            <div id="pois_original" class="pois-rect" style="width:40px;height:60px;margin:4px auto"></div>
+          </div>
+          <div style="font-size:18px;color:var(--muted)">→</div>
+          <div style="text-align:center;min-width:80px">
+            <div style="font-size:10px;color:var(--muted)">Actual</div>
+            <div id="pois_actual" class="pois-rect" style="width:40px;height:60px;margin:4px auto;transition:all .2s"></div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);flex:1">
+            <div>ν = <strong id="pois_nu">0.30</strong></div>
+            <div>Δd/d₀ = <strong id="pois_deld" style="color:var(--frac)">0.000%</strong></div>
+            <div style="margin-top:3px">ε_lat = <strong id="pois_elat" style="color:var(--neck)">0.000</strong></div>
+          </div>
+        </div>
+      </div>
+      <div id="dischargeInfo" class="discharge-info" style="display:none"></div>
+    </div>
+    </div>
+
+    <!-- 2 COMPRESIÓN -->
+    <div class="ed-sub-ctrl" id="ed_ctrl_compresion">
+    <div class="sec">
+      <div class="sec-title">Probeta de compresión</div>
+      <div class="field"><label>Longitud original <code>h₀</code> (mm)<button type="button" class="help-btn" onclick="showHelp('h0',event)">?</button></label>
+        <input type="number" id="co_h0" value="30" min="1" max="500" step="1" oninput="updateCompDerived()"></div>
+      <div class="field"><label>Diámetro <code>d₀</code> (mm)<button type="button" class="help-btn" onclick="showHelp('d0',event)">?</button></label>
+        <input type="number" id="co_d0" value="15" min="1" max="200" step="0.1" oninput="updateCompDerived()"></div>
+      <div class="derived-grid">
+        <div class="dcard"><div class="dl">A₀ (mm²)<button type="button" class="help-btn" onclick="showHelp('a0',event)">?</button></div><div class="dv" id="co_dA0">176.7</div></div>
+        <div class="dcard"><div class="dl">h₀/d₀<button type="button" class="help-btn" onclick="showHelp('ratio_hd',event)">?</button></div><div class="dv" id="co_ratio">2.0</div></div>
+      </div>
+      <div class="info-bar" id="co_warnRatio" style="display:none;margin-top:8px;border-left-color:var(--neck)"></div>
+    </div>
+    <div class="sec">
+      <div class="sec-title">Material</div>
+      <div class="field"><label>Preset<button type="button" class="help-btn" onclick="showHelp('preset',event)">?</button></label>
+        <select id="co_preset" onchange="applyPresetComp0()">
+          <optgroup label="Aceros y aleaciones">
+            <option value="acero" selected>Acero estructural A36</option>
+            <option value="aceroinox">Acero Inoxidable 304</option>
+            <option value="molibdeno">Molibdeno</option>
+          </optgroup>
+          <optgroup label="Metales no ferrosos">
+            <option value="aluminio">Aluminio 6061</option>
+            <option value="cobre">Cobre recocido</option>
+            <option value="titanio">Titanio Ti-6Al-4V</option>
+            <option value="niquel">Níquel</option>
+            <option value="magnesio">Magnesio AZ31</option>
+            <option value="laton">Latón</option>
+            <option value="zinc">Zinc</option>
+            <option value="tungsteno">Tungsteno</option>
+          </optgroup>
+          <optgroup label="Metales preciosos">
+            <option value="oro">Oro</option>
+            <option value="plata">Plata</option>
+            <option value="plomo">Plomo</option>
+          </optgroup>
+          <optgroup label="Frágiles y polímeros">
+            <option value="fragil">Hierro fundido gris (frágil)</option>
+            <option value="ceramica">Cerámica Al₂O₃</option>
+            <option value="carbono">Fibra de carbono</option>
+            <option value="hormigon">Hormigón</option>
+            <option value="madera">Madera de roble</option>
+            <option value="pino">Pino</option>
+            <option value="algarrobo">Algarrobo</option>
+            <option value="quebracho">Quebracho colorado</option>
+            <option value="nylon">Nylon PA6</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="field"><label>Módulo de elasticidad <code>E</code> (GPa)<button type="button" class="help-btn" onclick="showHelp('E',event)">?</button></label>
+        <input type="number" id="co_E" value="207" min="1" max="1000" step="1"></div>
+      <div class="field"><label>Resistencia a compresión <code>σ_c</code> (MPa)<button type="button" class="help-btn" onclick="showHelp('sigma_c',event)">?</button></label>
+        <input type="number" id="co_sc" value="450" min="1" max="5000" step="1"></div>
+      <div class="field"><label>Límite elástico comp. <code>σ_yc</code> (MPa)<button type="button" class="help-btn" onclick="showHelp('sigma_yc',event)">?</button></label>
+        <input type="number" id="co_syc" value="250" min="0" max="3000" step="1"></div>
+      <div class="info-bar" id="co_warnSycSc" style="display:none;margin-top:8px;border-left-color:var(--neck)"></div>
+      <div class="field"><label>¿Material frágil en compresión?<button type="button" class="help-btn" onclick="showHelp('fragil_comp',event)">?</button></label>
+        <select id="co_frag"><option value="no">No (dúctil)</option><option value="si">Sí (hormigón/cerámica)</option></select>
+      </div>
+    </div>
+    <div class="sec">
+      <div class="sec-title">Control</div>
+      <div class="speed-row">
+        <span>Velocidad<button type="button" class="help-btn" onclick="showHelp('speed',event)">?</button></span>
+        <input type="range" id="co_speed" min="0.5" max="6" step="0.5" value="2" oninput="document.getElementById('co_spLabel').textContent=this.value+'×'">
+        <span id="co_spLabel">2×</span>
+      </div>
+      <button class="btn-primary" id="co_playBtn" onclick="toggleCompPlay()">▶ Iniciar ensayo</button>
+      <button class="btn-secondary" onclick="resetComp()">↺ Reiniciar</button>
+      <button class="btn-secondary" onclick="exportCompChart()">⬇ Exportar imagen</button>
+    </div>
+    <div class="sec">
+      <div class="sec-title">Diferencias tracción vs compresión</div>
+      <div class="note" style="font-style:normal;color:var(--text)">
+        <div style="margin-bottom:6px">• En <strong>compresión</strong>, el eje Y es tensión negativa (—σ) y la deformación también es negativa</div>
+        <div style="margin-bottom:6px">• Materiales dúctiles: similar comportamiento a tracción</div>
+        <div style="margin-bottom:6px">• Materiales frágiles (hormigón): <em>mucho más resistentes</em> a compresión que a tracción</div>
+        <div>• La probeta se aplasta y ensancha lateralmente (efecto Poisson inverso)</div>
+      </div>
+    </div>
+    </div>
+
+    <!-- 3 COMPARAR -->
+    <div class="ed-sub-ctrl" id="ed_ctrl_comparar">
+    <div class="sec">
+      <div class="sec-title" style="color:var(--elastic)">■ Material 1</div>
+      <div class="field"><label>Preset<button type="button" class="help-btn" onclick="showHelp('preset',event)">?</button></label>
+        <select onchange="applyPreset2(1,this.value)">
+          <optgroup label="Aceros y aleaciones">
+            <option value="acero" selected>Acero estructural A36</option>
+            <option value="aceroinox">Acero Inoxidable 304</option>
+            <option value="molibdeno">Molibdeno</option>
+          </optgroup>
+          <optgroup label="Metales no ferrosos">
+            <option value="aluminio">Aluminio 6061</option>
+            <option value="cobre">Cobre recocido</option>
+            <option value="titanio">Titanio Ti-6Al-4V</option>
+            <option value="niquel">Níquel</option>
+            <option value="magnesio">Magnesio AZ31</option>
+            <option value="laton">Latón</option>
+            <option value="zinc">Zinc</option>
+            <option value="tungsteno">Tungsteno</option>
+          </optgroup>
+          <optgroup label="Metales preciosos">
+            <option value="oro">Oro</option>
+            <option value="plata">Plata</option>
+            <option value="plomo">Plomo</option>
+          </optgroup>
+          <optgroup label="Frágiles y polímeros">
+            <option value="fragil">Hierro fundido gris (frágil)</option>
+            <option value="ceramica">Cerámica Al₂O₃</option>
+            <option value="carbono">Fibra de carbono</option>
+            <option value="hormigon">Hormigón</option>
+            <option value="madera">Madera de roble</option>
+            <option value="pino">Pino</option>
+            <option value="algarrobo">Algarrobo</option>
+            <option value="quebracho">Quebracho colorado</option>
+            <option value="nylon">Nylon PA6</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="field"><label>E (GPa)<button type="button" class="help-btn" onclick="showHelp('E',event)">?</button></label><input type="number" id="c1_E" value="207" min="1" max="1000" step="1"></div>
+      <div class="field"><label>σ_y (MPa)<button type="button" class="help-btn" onclick="showHelp('sy',event)">?</button></label><input type="number" id="c1_sy" value="250" min="0" max="3000" step="1"></div>
+      <div class="field"><label>TS (MPa)<button type="button" class="help-btn" onclick="showHelp('ts',event)">?</button></label><input type="number" id="c1_ts" value="450" min="1" max="3000" step="1"></div>
+      <div class="field"><label>%EL<button type="button" class="help-btn" onclick="showHelp('el',event)">?</button></label><input type="number" id="c1_el" value="20" min="0.1" max="100" step="0.1"></div>
+    </div>
+    <div class="sec">
+      <div class="sec-title" style="color:var(--mat2)">■ Material 2</div>
+      <div class="field"><label>Preset<button type="button" class="help-btn" onclick="showHelp('preset',event)">?</button></label>
+        <select onchange="applyPreset2(2,this.value)">
+          <optgroup label="Aceros y aleaciones">
+            <option value="acero">Acero estructural A36</option>
+            <option value="aceroinox">Acero Inoxidable 304</option>
+            <option value="molibdeno">Molibdeno</option>
+          </optgroup>
+          <optgroup label="Metales no ferrosos">
+            <option value="aluminio" selected>Aluminio 6061</option>
+            <option value="cobre">Cobre recocido</option>
+            <option value="titanio">Titanio Ti-6Al-4V</option>
+            <option value="niquel">Níquel</option>
+            <option value="magnesio">Magnesio AZ31</option>
+            <option value="laton">Latón</option>
+            <option value="zinc">Zinc</option>
+            <option value="tungsteno">Tungsteno</option>
+          </optgroup>
+          <optgroup label="Metales preciosos">
+            <option value="oro">Oro</option>
+            <option value="plata">Plata</option>
+            <option value="plomo">Plomo</option>
+          </optgroup>
+          <optgroup label="Frágiles y polímeros">
+            <option value="fragil">Hierro fundido gris (frágil)</option>
+            <option value="ceramica">Cerámica Al₂O₃</option>
+            <option value="carbono">Fibra de carbono</option>
+            <option value="hormigon">Hormigón</option>
+            <option value="madera">Madera de roble</option>
+            <option value="pino">Pino</option>
+            <option value="algarrobo">Algarrobo</option>
+            <option value="quebracho">Quebracho colorado</option>
+            <option value="nylon">Nylon PA6</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="field"><label>E (GPa)<button type="button" class="help-btn" onclick="showHelp('E',event)">?</button></label><input type="number" id="c2_E" value="69" min="1" max="1000" step="1"></div>
+      <div class="field"><label>σ_y (MPa)<button type="button" class="help-btn" onclick="showHelp('sy',event)">?</button></label><input type="number" id="c2_sy" value="28" min="0" max="3000" step="1"></div>
+      <div class="field"><label>TS (MPa)<button type="button" class="help-btn" onclick="showHelp('ts',event)">?</button></label><input type="number" id="c2_ts" value="69" min="1" max="3000" step="1"></div>
+      <div class="field"><label>%EL<button type="button" class="help-btn" onclick="showHelp('el',event)">?</button></label><input type="number" id="c2_el" value="45" min="0.1" max="100" step="0.1"></div>
+    </div>
+    <button class="btn-primary" onclick="renderCompare()">Comparar</button>
+    <button class="btn-secondary" onclick="exportCompareChart()">⬇ Exportar imagen</button>
+    </div>
+
+    <!-- 4 TEMPERATURA -->
+    <div class="ed-sub-ctrl" id="ed_ctrl_temperatura">
+    <div class="sec">
+      <div class="sec-title">Material base (25 °C)</div>
+      <div class="field"><label>Preset<button type="button" class="help-btn" onclick="showHelp('preset',event)">?</button></label>
+        <select onchange="applyPreset('t',this.value)">
+          <optgroup label="Aceros y aleaciones">
+            <option value="acero" selected>Acero estructural A36</option>
+            <option value="aceroinox">Acero Inoxidable 304</option>
+            <option value="molibdeno">Molibdeno</option>
+          </optgroup>
+          <optgroup label="Metales no ferrosos">
+            <option value="aluminio">Aluminio 6061</option>
+            <option value="cobre">Cobre recocido</option>
+            <option value="titanio">Titanio Ti-6Al-4V</option>
+            <option value="niquel">Níquel</option>
+            <option value="magnesio">Magnesio AZ31</option>
+            <option value="laton">Latón</option>
+            <option value="zinc">Zinc</option>
+            <option value="tungsteno">Tungsteno</option>
+          </optgroup>
+          <optgroup label="Metales preciosos">
+            <option value="oro">Oro</option>
+            <option value="plata">Plata</option>
+            <option value="plomo">Plomo</option>
+          </optgroup>
+          <optgroup label="Frágiles y polímeros">
+            <option value="fragil">Hierro fundido gris (frágil)</option>
+            <option value="ceramica">Cerámica Al₂O₃</option>
+            <option value="carbono">Fibra de carbono</option>
+            <option value="hormigon">Hormigón</option>
+            <option value="madera">Madera de roble</option>
+            <option value="pino">Pino</option>
+            <option value="algarrobo">Algarrobo</option>
+            <option value="quebracho">Quebracho colorado</option>
+            <option value="nylon">Nylon PA6</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="field"><label>E a 25°C (GPa)<button type="button" class="help-btn" onclick="showHelp('E',event)">?</button></label><input type="number" id="t_E" value="207" min="1" max="1000" step="1"></div>
+      <div class="field"><label>σ_y a 25°C (MPa)<button type="button" class="help-btn" onclick="showHelp('sy',event)">?</button></label><input type="number" id="t_sy" value="250" min="1" max="3000" step="1"></div>
+      <div class="field"><label>TS a 25°C (MPa)<button type="button" class="help-btn" onclick="showHelp('ts',event)">?</button></label><input type="number" id="t_ts" value="450" min="1" max="3000" step="1"></div>
+      <div class="field"><label>%EL a 25°C (%)<button type="button" class="help-btn" onclick="showHelp('el',event)">?</button></label><input type="number" id="t_el" value="20" min="0.1" max="100" step="0.1"></div>
+    </div>
+    <div class="sec">
+      <div class="sec-title">Temperaturas a comparar</div>
+      <div class="field"><label>Temperatura baja (°C)<button type="button" class="help-btn" onclick="showHelp('temp_test',event)">?</button></label><input type="number" id="t_low" value="-200" min="-273" max="1500" step="10"></div>
+      <div class="field"><label>Temperatura media (°C)<button type="button" class="help-btn" onclick="showHelp('temp_test',event)">?</button></label><input type="number" id="t_mid" value="25" min="-273" max="1500" step="10"></div>
+      <div class="field"><label>Temperatura alta (°C)<button type="button" class="help-btn" onclick="showHelp('temp_test',event)">?</button></label><input type="number" id="t_high" value="400" min="-273" max="1500" step="10"></div>
+    </div>
+    <div class="note" style="margin-bottom:10px">Al aumentar T → E, σ_y y TS bajan; %EL sube (mayor ductilidad). La simulación aplica factores de escala orientativos.</div>
+    <button class="btn-primary" onclick="renderTemp()">Simular temperaturas</button>
+    <button class="btn-secondary" onclick="exportTempChart()">⬇ Exportar imagen</button>
+    </div>
+
+    <!-- 5 COMPUESTO -->
+    <div class="ed-sub-ctrl" id="ed_ctrl_compuesto">
+    <div class="sec">
+      <div class="sec-title">Componente 1 (matriz)</div>
+      <div class="field"><label>Preset<button type="button" class="help-btn" onclick="showHelp('preset',event)">?</button></label>
+        <select id="k1_preset" onchange="applyPresetComp(1,this.value)">
+          <optgroup label="Aceros y aleaciones">
+            <option value="acero" selected>Acero estructural A36</option>
+            <option value="aceroinox">Acero Inoxidable 304</option>
+            <option value="molibdeno">Molibdeno</option>
+          </optgroup>
+          <optgroup label="Metales no ferrosos">
+            <option value="aluminio">Aluminio 6061</option>
+            <option value="cobre">Cobre recocido</option>
+            <option value="titanio">Titanio Ti-6Al-4V</option>
+            <option value="niquel">Níquel</option>
+            <option value="magnesio">Magnesio AZ31</option>
+            <option value="laton">Latón</option>
+            <option value="zinc">Zinc</option>
+            <option value="tungsteno">Tungsteno</option>
+          </optgroup>
+          <optgroup label="Metales preciosos">
+            <option value="oro">Oro</option>
+            <option value="plata">Plata</option>
+            <option value="plomo">Plomo</option>
+          </optgroup>
+          <optgroup label="Frágiles y polímeros">
+            <option value="fragil">Hierro fundido gris (frágil)</option>
+            <option value="ceramica">Cerámica Al₂O₃</option>
+            <option value="carbono">Fibra de carbono</option>
+            <option value="hormigon">Hormigón</option>
+            <option value="madera">Madera de roble</option>
+            <option value="pino">Pino</option>
+            <option value="algarrobo">Algarrobo</option>
+            <option value="quebracho">Quebracho colorado</option>
+            <option value="nylon">Nylon PA6</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="field"><label>E₁ (GPa)<button type="button" class="help-btn" onclick="showHelp('E',event)">?</button></label><input type="number" id="k1_E" value="207" min="1" max="1000" step="1"></div>
+      <div class="field"><label>σ_y₁ (MPa)<button type="button" class="help-btn" onclick="showHelp('sy',event)">?</button></label><input type="number" id="k1_sy" value="250" min="1" max="3000" step="1"></div>
+      <div class="field"><label>TS₁ (MPa)<button type="button" class="help-btn" onclick="showHelp('ts',event)">?</button></label><input type="number" id="k1_ts" value="450" min="1" max="3000" step="1"></div>
+      <div class="field"><label>%EL₁ (%)<button type="button" class="help-btn" onclick="showHelp('el',event)">?</button></label><input type="number" id="k1_el" value="20" min="0.1" max="100" step="0.1"></div>
+    </div>
+    <div class="sec">
+      <div class="sec-title">Componente 2 (refuerzo)</div>
+      <div class="field"><label>Preset<button type="button" class="help-btn" onclick="showHelp('preset',event)">?</button></label>
+        <select id="k2_preset" onchange="applyPresetComp(2,this.value)">
+          <optgroup label="Aceros y aleaciones">
+            <option value="acero">Acero estructural A36</option>
+            <option value="aceroinox">Acero Inoxidable 304</option>
+            <option value="molibdeno">Molibdeno</option>
+          </optgroup>
+          <optgroup label="Metales no ferrosos">
+            <option value="aluminio">Aluminio 6061</option>
+            <option value="cobre">Cobre recocido</option>
+            <option value="titanio">Titanio Ti-6Al-4V</option>
+            <option value="niquel">Níquel</option>
+            <option value="magnesio">Magnesio AZ31</option>
+            <option value="laton">Latón</option>
+            <option value="zinc">Zinc</option>
+            <option value="tungsteno">Tungsteno</option>
+          </optgroup>
+          <optgroup label="Metales preciosos">
+            <option value="oro">Oro</option>
+            <option value="plata">Plata</option>
+            <option value="plomo">Plomo</option>
+          </optgroup>
+          <optgroup label="Frágiles y polímeros">
+            <option value="fragil">Hierro fundido gris (frágil)</option>
+            <option value="ceramica">Cerámica Al₂O₃</option>
+            <option value="carbono" selected>Fibra de carbono</option>
+            <option value="hormigon">Hormigón</option>
+            <option value="madera">Madera de roble</option>
+            <option value="pino">Pino</option>
+            <option value="algarrobo">Algarrobo</option>
+            <option value="quebracho">Quebracho colorado</option>
+            <option value="nylon">Nylon PA6</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="field"><label>E₂ (GPa)<button type="button" class="help-btn" onclick="showHelp('E',event)">?</button></label><input type="number" id="k2_E" value="230" min="1" max="1000" step="1"></div>
+      <div class="field"><label>TS₂ (MPa)<button type="button" class="help-btn" onclick="showHelp('ts',event)">?</button></label><input type="number" id="k2_ts" value="3500" min="1" max="10000" step="1"></div>
+      <div class="field"><label>%EL₂ (%)<button type="button" class="help-btn" onclick="showHelp('el',event)">?</button></label><input type="number" id="k2_el" value="1.5" min="0.01" max="100" step="0.1"></div>
+    </div>
+    <div class="sec">
+      <div class="sec-title">Fracción volumétrica del refuerzo</div>
+      <div class="field">
+        <label>f₂ (fracción del componente 2)<button type="button" class="help-btn" onclick="showHelp('f2',event)">?</button></label>
+        <input type="number" id="k_f2" value="0.3" min="0.01" max="0.99" step="0.01">
+        <div style="font-size:11px;color:var(--muted);margin-top:3px">0 a 1 — ej: 0.3 = 30% de refuerzo</div>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="renderCompound()">Calcular compuesto</button>
+    <button class="btn-secondary" onclick="exportCompoundChart()">⬇ Exportar imagen</button>
+    </div>
+
+    <!-- 6 CONFIGURACIONES -->
+    <div class="ed-sub-ctrl" id="ed_ctrl_configuraciones">
+    <div class="sec">
+      <div class="sec-title">Guardar configuración actual</div>
+      <div class="field"><label>Nombre (ej: "Grupo 3 — Acero templado")<button type="button" class="help-btn" onclick="showHelp('cfg_name',event)">?</button></label>
+        <input type="text" id="cfg_name" placeholder="Nombre de la configuración"></div>
+      <div class="note" style="margin-bottom:8px">Guarda los parámetros actuales del ensayo de tracción (Tab 1)</div>
+      <button class="btn-primary" onclick="saveConfig()">Guardar configuración</button>
+      <div class="info-bar" id="cfg_warn" style="display:none;margin-top:8px;border-left-color:var(--neck)"></div>
+    </div>
+    <div class="sec">
+      <div class="sec-title">Configuraciones guardadas</div>
+      <!-- FIX #20: las configuraciones se guardan en localStorage, que persiste
+           entre todos los usuarios de la misma PC/navegador -- esto es relevante
+           en PCs compartidas de aula. Se deja explícito acá y se ofrece un botón
+           para borrar todo antes de dejar el equipo. -->
+      <div class="note" style="margin-bottom:8px">Se guardan en este navegador (no en la nube). En una PC compartida del aula, cualquier otra persona que use este mismo navegador puede ver y cargar estas configuraciones -- si es tu caso, te recomendamos borrarlas antes de irte.</div>
+      <div class="saved-list" id="savedList">
+        <div style="font-size:12px;color:var(--muted);text-align:center;padding:10px">No hay configuraciones guardadas aún</div>
+      </div>
+      <button class="btn-secondary" style="margin-top:8px" onclick="deleteAllConfigs()">Borrar todas las configuraciones</button>
+    </div>
+    </div>
+
+  </aside>
+
+  <main class="main">
+    <button class="drawer-toggle" onclick="openSidebar()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg> ☰ Parámetros</button>
+
+    <div class="ed-subnav">
+      <button class="ed-subbtn active" data-ed="traccion" onclick="edSwitch('traccion')">1. Tracción</button>
+      <button class="ed-subbtn" data-ed="compresion" onclick="edSwitch('compresion')">2. Compresión</button>
+      <button class="ed-subbtn" data-ed="comparar" onclick="edSwitch('comparar')">3. Comparar materiales</button>
+      <button class="ed-subbtn" data-ed="temperatura" onclick="edSwitch('temperatura')">4. Efecto temperatura</button>
+      <button class="ed-subbtn" data-ed="compuesto" onclick="edSwitch('compuesto')">5. Material compuesto</button>
+      <button class="ed-subbtn" data-ed="configuraciones" onclick="edSwitch('configuraciones')">6. Configuraciones</button>
+    </div>
+
+    <!-- ---- 1 TRACCIÓN ---- -->
+    <div class="ed-sub-panel active" id="ed_panel_traccion">
+    <div class="metrics-row">
+      <div class="mcard"><div class="ml">Fuerza F<button type="button" class="help-btn" onclick="showHelp('F',event)">?</button></div><div class="mv" id="mF">0</div><div class="ms">N</div></div>
+      <div class="mcard"><div class="ml">Tensión σ = F/A₀<button type="button" class="help-btn" onclick="showHelp('sigma',event)">?</button></div><div class="mv" id="mSig">0</div><div class="ms">MPa</div></div>
+      <div class="mcard"><div class="ml">Alargamiento Δl<button type="button" class="help-btn" onclick="showHelp('dl',event)">?</button></div><div class="mv" id="mDl">0</div><div class="ms">mm</div></div>
+      <div class="mcard"><div class="ml">Deformación ε = Δl/l₀<button type="button" class="help-btn" onclick="showHelp('eps',event)">?</button></div><div class="mv" id="mEps">0.0000</div><div class="ms">adimensional</div></div>
+    </div>
+
+    <div class="probeta-bar">
+      <span class="pb-label">Probeta</span>
+      <svg id="probSVG" width="100%" height="56" viewBox="0 0 500 56" style="flex:1;max-width:520px"></svg>
+      <span class="pb-label" id="probState">Sin carga</span>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-hdr">
+        <span class="chart-title">Diagrama tensión — deformación nominal</span>
+        <div class="chart-actions">
+          <label class="check-row" style="margin:0;font-size:11px">
+            <input type="checkbox" id="e_showShading" checked onchange="rebuildMainChart()"> Sombreado Ten./Res.
+          </label>
+        </div>
+        <div class="legend">
+          <span class="leg"><span class="leg-line" style="background:var(--elastic)"></span>Elástica</span>
+          <span class="leg"><span class="leg-line" style="background:var(--plastic)"></span>Plástica</span>
+          <span class="leg"><span class="leg-line" style="background:var(--neck)"></span>Estricción</span>
+          <span class="leg"><span class="leg-line" style="background:var(--frac)"></span>Fractura</span>
+          <span class="leg"><span style="display:inline-block;width:14px;height:10px;background:var(--res-fill);border:1px solid var(--elastic);border-radius:2px"></span>Resiliencia</span>
+          <span class="leg"><span style="display:inline-block;width:14px;height:10px;background:var(--ten-fill);border:1px solid var(--plastic);border-radius:2px"></span>Tenacidad</span>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="mainChart"></canvas></div>
+      <div class="info-bar" id="infoBar">Configurá la probeta y el material, luego iniciá el ensayo.</div>
+    </div>
+
+    <div class="zoom-card">
+      <div class="zt">🔍 Zoom — Zona elástica (Ley de Hooke: σ = E·ε) + Cálculo explícito de resiliencia y %AR/%EL</div>
+      <div class="zoom-wrap"><canvas id="zoomChart"></canvas></div>
+    </div>
+
+    <div class="results-grid">
+      <div class="rcard"><div class="rl">E (GPa)<button type="button" class="help-btn" onclick="showHelp('E',event)">?</button></div><div class="rv" id="rE">—</div></div>
+      <div class="rcard"><div class="rl">σ_y (MPa)<button type="button" class="help-btn" onclick="showHelp('sy',event)">?</button></div><div class="rv" id="rSy">—</div></div>
+      <div class="rcard"><div class="rl">TS (MPa)<button type="button" class="help-btn" onclick="showHelp('ts',event)">?</button></div><div class="rv" id="rTs">—</div></div>
+      <div class="rcard"><div class="rl">%EL<button type="button" class="help-btn" onclick="showHelp('el',event)">?</button></div><div class="rv" id="rEl">—</div></div>
+      <div class="rcard"><div class="rl">%AR (reducción área)<button type="button" class="help-btn" onclick="showHelp('ar',event)">?</button></div><div class="rv" id="rAR">—</div></div>
+      <div class="rcard"><div class="rl">F_max (kN)<button type="button" class="help-btn" onclick="showHelp('fmax',event)">?</button></div><div class="rv" id="rFmax">—</div></div>
+      <div class="rcard"><div class="rl">Tenacidad (MJ/m³)<button type="button" class="help-btn" onclick="showHelp('tenacidad',event)">?</button></div><div class="rv" id="rTen">—</div></div>
+      <div class="rcard"><div class="rl">Resiliencia (kJ/m³)<button type="button" class="help-btn" onclick="showHelp('resiliencia',event)">?</button></div><div class="rv" id="rRes">—</div></div>
+      <div class="rcard"><div class="rl">Δl total (mm)<button type="button" class="help-btn" onclick="showHelp('dltot',event)">?</button></div><div class="rv" id="rDltot">—</div></div>
+      <div class="rcard"><div class="rl">ε_fractura<button type="button" class="help-btn" onclick="showHelp('efrac',event)">?</button></div><div class="rv" id="rEfrac">—</div></div>
+      <div class="rcard"><div class="rl">Coef. Poisson ν<button type="button" class="help-btn" onclick="showHelp('nu',event)">?</button></div><div class="rv" id="rNu">—</div></div>
+      <div class="rcard"><div class="rl">Tipo de fractura<button type="button" class="help-btn" onclick="showHelp('tipo_fractura',event)">?</button></div><div class="rv" id="rTipo">—</div></div>
+    </div>
+    <div class="note" id="formulasNote" style="display:none"></div>
+    </div>
+
+    <!-- ---- 2 COMPRESIÓN ---- -->
+    <div class="ed-sub-panel" id="ed_panel_compresion">
+    <div class="metrics-row">
+      <div class="mcard"><div class="ml">Fuerza F<button type="button" class="help-btn" onclick="showHelp('F',event)">?</button></div><div class="mv" id="co_mF">0</div><div class="ms">kN (compresión)</div></div>
+      <div class="mcard"><div class="ml">Tensión σ_c<button type="button" class="help-btn" onclick="showHelp('sigma_c',event)">?</button></div><div class="mv" id="co_mSig">0</div><div class="ms">MPa</div></div>
+      <div class="mcard"><div class="ml">Acortamiento Δh<button type="button" class="help-btn" onclick="showHelp('dh',event)">?</button></div><div class="mv" id="co_mDh">0</div><div class="ms">mm</div></div>
+      <div class="mcard"><div class="ml">Deformación ε_c<button type="button" class="help-btn" onclick="showHelp('eps_c',event)">?</button></div><div class="mv" id="co_mEps">0.0000</div><div class="ms">adimensional</div></div>
+    </div>
+    <div class="probeta-bar">
+      <span class="pb-label">Probeta (vista lateral)</span>
+      <svg id="compProbSVG" width="100%" height="60" viewBox="0 0 500 60" style="flex:1;max-width:500px"></svg>
+      <span class="pb-label" id="co_probState">Sin carga</span>
+    </div>
+    <div class="chart-card" style="flex:1">
+      <div class="chart-hdr">
+        <span class="chart-title">Diagrama tensión — deformación en compresión (σ negativa)</span>
+        <div class="legend">
+          <span class="leg"><span class="leg-line" style="background:var(--elastic)"></span>Elástica</span>
+          <span class="leg"><span class="leg-line" style="background:var(--plastic)"></span>Fluencia / Aplastamiento</span>
+          <span class="leg"><span class="leg-line" style="background:var(--frac)"></span>Falla</span>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:300px"><canvas id="compChart"></canvas></div>
+      <div class="info-bar" id="co_infoBar">Configurá el material y comenzá el ensayo de compresión.</div>
+    </div>
+    <div class="results-grid">
+      <div class="rcard"><div class="rl">E (GPa)<button type="button" class="help-btn" onclick="showHelp('E',event)">?</button></div><div class="rv" id="co_rE">—</div></div>
+      <div class="rcard"><div class="rl">σ_yc (MPa)<button type="button" class="help-btn" onclick="showHelp('sigma_yc',event)">?</button></div><div class="rv" id="co_rSy">—</div></div>
+      <div class="rcard"><div class="rl">σ_c max (MPa)<button type="button" class="help-btn" onclick="showHelp('sigma_c',event)">?</button></div><div class="rv" id="co_rSc">—</div></div>
+      <div class="rcard"><div class="rl">F_max (kN)<button type="button" class="help-btn" onclick="showHelp('fmax',event)">?</button></div><div class="rv" id="co_rFmax">—</div></div>
+    </div>
+    </div>
+
+    <!-- ---- 3 COMPARAR ---- -->
+    <div class="ed-sub-panel" id="ed_panel_comparar">
+    <div class="chart-card" style="flex:1">
+      <div class="chart-hdr">
+        <span class="chart-title">Comparación de curvas tensión — deformación</span>
+        <div class="legend">
+          <span class="leg"><span class="leg-line" style="background:var(--elastic)"></span>Material 1</span>
+          <span class="leg"><span class="leg-line" style="background:var(--mat2)"></span>Material 2</span>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:340px"><canvas id="compareChart"></canvas></div>
+    </div>
+    <div class="info-bar" id="c_warnSyTs" style="display:none;margin-top:8px;border-left-color:var(--neck)"></div>
+    <div class="results-grid" id="compareResults"></div>
+    </div>
+
+    <!-- ---- 4 TEMPERATURA ---- -->
+    <div class="ed-sub-panel" id="ed_panel_temperatura">
+    <div class="chart-card" style="flex:1">
+      <div class="chart-hdr">
+        <span class="chart-title">Efecto de la temperatura sobre la curva σ — ε</span>
+        <div class="temp-legend">
+          <span class="tleg"><span class="leg-line" style="background:var(--temp1);display:inline-block"></span><span id="tLeg1">—</span></span>
+          <span class="tleg"><span class="leg-line" style="background:var(--temp2);display:inline-block"></span><span id="tLeg2">—</span></span>
+          <span class="tleg"><span class="leg-line" style="background:var(--temp3);display:inline-block"></span><span id="tLeg3">—</span></span>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:340px"><canvas id="tempChart"></canvas></div>
+    </div>
+    <div class="results-grid" id="tempResults"></div>
+    </div>
+
+    <!-- ---- 5 COMPUESTO ---- -->
+    <div class="ed-sub-panel" id="ed_panel_compuesto">
+    <div class="comp-result" id="compResult" style="display:none"></div>
+    <div class="info-bar" id="compWarnSyTs" style="display:none;margin-top:8px;border-left-color:var(--neck)"></div>
+    <div class="info-bar" id="compWarnPlausible" style="display:none;margin-top:8px;border-left-color:var(--neck)"></div>
+    <div class="chart-card" style="flex:1">
+      <div class="chart-hdr">
+        <span class="chart-title">Curvas estimadas por regla de mezclas</span>
+        <div class="legend">
+          <span class="leg"><span class="leg-line" style="background:var(--elastic)"></span>Componente 1 (matriz)</span>
+          <span class="leg"><span class="leg-line" style="background:var(--mat2)"></span>Componente 2 (refuerzo)</span>
+          <span class="leg"><span class="leg-line" style="background:var(--neck)"></span>Compuesto estimado</span>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:320px"><canvas id="compoundChart"></canvas></div>
+    </div>
+    <div style="background:var(--surface2);border-radius:var(--radius);padding:11px 14px;margin-top:2px">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">¿Cómo funciona la Regla de Mezclas?</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px">
+        <div style="background:var(--surface);border-radius:6px;padding:8px;border-left:3px solid var(--elastic)">
+          <div style="font-weight:600;margin-bottom:3px">Arreglo en paralelo (isostrain)</div>
+          <div style="font-family:var(--mono);color:var(--accent);margin-bottom:2px">E_par = E₁·f₁ + E₂·f₂</div>
+          <div style="color:var(--muted)">Las fibras y la matriz se deforman igual. Resultado: módulo <em>máximo</em> posible.</div>
+        </div>
+        <div style="background:var(--surface);border-radius:6px;padding:8px;border-left:3px solid var(--mat2)">
+          <div style="font-weight:600;margin-bottom:3px">Arreglo en serie (isostress)</div>
+          <div style="font-family:var(--mono);color:var(--accent);margin-bottom:2px">1/E_ser = f₁/E₁ + f₂/E₂</div>
+          <div style="color:var(--muted)">Misma tensión en ambos. Resultado: módulo <em>mínimo</em> (límite inferior).</div>
+        </div>
+      </div>
+      <div style="margin-top:7px;font-size:11px;color:var(--muted);border-top:1px solid var(--border);padding-top:7px">
+        <strong style="color:var(--text)">Ejemplos reales:</strong> CFRP (fibra de carbono en epoxy) usa arreglo paralelo → muy alta rigidez en dirección de las fibras. Hormigón armado (acero en hormigón) → el acero soporta tracción, el hormigón la compresión.
+      </div>
+    </div>
+    <div class="note" id="compNote"></div>
+    </div>
+
+    <!-- ---- 6 CONFIGURACIONES ---- -->
+    <div class="ed-sub-panel" id="ed_panel_configuraciones">
+    <div class="chart-card">
+      <div class="chart-title" style="margin-bottom:10px">Instrucciones</div>
+      <div style="font-size:13px;line-height:1.8;color:var(--muted)">
+        <div style="margin-bottom:8px">1. Configurá un material en el <strong>Ensayo de Tracción</strong> (Tab 1)</div>
+        <div style="margin-bottom:8px">2. Volvé aquí y dale un nombre a la configuración</div>
+        <div style="margin-bottom:8px">3. Hacé clic en <strong>Guardar configuración</strong></div>
+        <div style="margin-bottom:8px">4. Para cargar una configuración guardada, hacé clic sobre ella en la lista</div>
+        <div>5. Las configuraciones se guardan en el navegador (localStorage) — persisten entre clases mientras no se borren los datos del navegador</div>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title" style="margin-bottom:10px">Configuración actual (Ensayo de tracción)</div>
+      <div class="results-grid" id="currentConfigDisplay"></div>
+    </div>
+    </div>
+
+  </main>
+</div>
+<!-- ================================================================ TAB: DUREZA (Módulo 2) -->
+<div class="page" id="tab-dureza">
+  <aside class="sidebar">
+<div style="display:flex;justify-content:flex-end;margin-bottom:8px;"><button class="drawer-close-btn" onclick="closeSidebar()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted);padding:4px 8px;line-height:1">✕</button></div>
+
+    <div class="sec">
+      <div class="sec-title">Dureza</div>
+      <div class="note" style="margin-top:0">Resistencia de un material a la deformación plástica localizada. Elegí una sección en el panel principal para explorar cada ensayo.</div>
+    </div>
+
+    <!-- 1 MOHS -->
+    <div class="sec dz-sub-ctrl active" id="dz_ctrl_mohs">
+      <div class="sec-title">Escala de Mohs<button type="button" class="help-btn" onclick="showHelp('mohs',event)">?</button></div>
+      <div class="field"><label>Mineral A (el que raya)</label><select id="dz_mohsA" onchange="dzMohsTest()"></select></div>
+      <div class="field"><label>Mineral B (superficie)</label><select id="dz_mohsB" onchange="dzMohsTest()"></select></div>
+      <button class="btn-primary" onclick="dzMohsTest()">Intentar rayar</button>
+    </div>
+
+    <!-- 2 ROCKWELL -->
+    <div class="sec dz-sub-ctrl" id="dz_ctrl_rockwell">
+      <div class="sec-title">Ensayo Rockwell</div>
+      <div class="field"><label>Material (opcional — carga un ensayo de referencia)</label>
+        <select id="dz_rkMat" onchange="dzApplyRockwellMaterial()">
+          <option value="">— Sin material (exploración libre) —</option>
+          <option value="acero">Acero estructural A36 (HRB)</option>
+          <option value="aceroinox">Acero Inoxidable 304 (HRB)</option>
+          <option value="fragil">Hierro fundido gris (HRC)</option>
+          <option value="aluminio">Aluminio 6061-T6 (HRB)</option>
+          <option value="titanio">Titanio Ti-6Al-4V (HRC)</option>
+          <option value="niquel">Níquel (HRB)</option>
+          <option value="molibdeno">Molibdeno (HRB)</option>
+          <option value="magnesio">Magnesio AZ31 (HRB)</option>
+          <option value="zinc">Zinc (HRB)</option>
+          <option value="tungsteno">Tungsteno (HRC)</option>
+          <option value="laton">Latón (HRB)</option>
+        </select>
+      </div>
+      <div class="field"><label>Tipo de ensayo</label>
+        <select id="dz_rkType" onchange="document.getElementById('dz_rkMat').value=''; dzRenderRkTable()">
+          <option value="normal">Rockwell (carga menor 10 kg)</option>
+          <option value="superficial">Rockwell Superficial (carga menor 3 kg)</option>
+        </select>
+      </div>
+      <div class="note" style="margin-bottom:8px">Elegí una escala haciendo clic en la tabla del panel principal.</div>
+      <div class="field">
+        <label>Dureza simulada del material<button type="button" class="help-btn" onclick="showHelp('dz_rk',event)">?</button></label>
+        <input type="range" id="dz_rkSlider" min="1" max="100" value="50" oninput="dzUpdateRk()">
+      </div>
+      <div class="note">Cobre, plata, oro y plomo no están en la lista: son tan blandos que quedan fuera del rango que este control ilustrativo puede representar bien. Igual que en Brinell, hormigón, madera, cerámica, fibra de carbono y nylon quedan para otros métodos.</div>
+    </div>
+
+    <!-- 3 BRINELL -->
+    <div class="sec dz-sub-ctrl" id="dz_ctrl_brinell">
+      <div class="sec-title">Ensayo Brinell</div>
+      <div class="field"><label>Material (opcional — carga un ensayo de referencia)</label>
+        <select id="dz_brMat" onchange="dzApplyBrinellMaterial()">
+          <option value="">— Sin material (exploración libre) —</option>
+          <option value="acero">Acero estructural A36</option>
+          <option value="aceroinox">Acero Inoxidable 304</option>
+          <option value="fragil">Hierro fundido gris</option>
+          <option value="aluminio">Aluminio 6061-T6</option>
+          <option value="cobre">Cobre</option>
+          <option value="titanio">Titanio Ti-6Al-4V</option>
+          <option value="niquel">Níquel</option>
+          <option value="molibdeno">Molibdeno</option>
+          <option value="magnesio">Magnesio AZ31</option>
+          <option value="zinc">Zinc</option>
+          <option value="tungsteno">Tungsteno</option>
+          <option value="laton">Latón</option>
+          <option value="plata">Plata</option>
+          <option value="oro">Oro</option>
+        </select>
+      </div>
+      <div class="field"><label>Carga P (kg)</label>
+        <select id="dz_brP" onchange="dzUpdateBrinell()">
+          <option>500</option><option>1000</option><option>1500</option>
+          <option selected>2000</option><option>2500</option><option>3000</option>
+        </select>
+      </div>
+      <div class="field"><label>Diámetro de huella d (mm) — <span id="dz_brDVal">3.50</span> mm</label>
+        <input type="range" id="dz_brD" min="1.0" max="6.5" step="0.05" value="3.5" oninput="dzUpdateBrinell()">
+      </div>
+      <div class="note">D (penetrador) = 10,00 mm, fijo. Hormigón, madera, cerámica, fibra de carbono y plomo no están en la lista: en la práctica se miden con otros métodos (esclerómetro, dureza Janka, Vickers, etc.) que todavía no están integrados acá.</div>
+    </div>
+
+    <!-- 4 MICRODUREZA -->
+    <div class="sec dz-sub-ctrl" id="dz_ctrl_micro">
+      <div class="sec-title">Vickers</div>
+      <div class="field"><label>Material (opcional — carga un ensayo de referencia)</label>
+        <select id="dz_vMat" onchange="dzApplyVickersMaterial()">
+          <option value="">— Sin material (exploración libre) —</option>
+          <option value="ceramica">Cerámica (Al₂O₃)</option>
+          <option value="acero">Acero estructural A36</option>
+          <option value="aceroinox">Acero Inoxidable 304</option>
+          <option value="fragil">Hierro fundido gris</option>
+          <option value="aluminio">Aluminio 6061-T6</option>
+          <option value="cobre">Cobre</option>
+          <option value="titanio">Titanio Ti-6Al-4V</option>
+          <option value="niquel">Níquel</option>
+          <option value="molibdeno">Molibdeno</option>
+          <option value="magnesio">Magnesio AZ31</option>
+          <option value="zinc">Zinc</option>
+          <option value="tungsteno">Tungsteno</option>
+          <option value="laton">Latón</option>
+          <option value="plata">Plata</option>
+          <option value="oro">Oro</option>
+        </select>
+      </div>
+      <div class="field"><label>Carga P (gf)</label><input type="number" id="dz_vP" value="100" min="1" oninput="dzUpdateMicro()"></div>
+      <div class="field"><label>Diagonal promedio d₁ (mm)</label><input type="number" id="dz_vD" value="0.03" step="0.01" min="0.01" oninput="dzUpdateMicro()"></div>
+      <div class="note">Fibra de carbono no está en la lista: un compuesto no tiene una única dureza de conjunto que tenga sentido citar (la fibra y la resina tienen durezas muy distintas entre sí).</div>
+      <div class="sec-title" style="margin-top:14px">Knoop</div>
+      <div class="field"><label>Carga P (gf)</label><input type="number" id="dz_kP" value="100" min="1" oninput="dzUpdateMicro()"></div>
+      <div class="field"><label>Longitud mayor l (mm)</label><input type="number" id="dz_kL" value="0.08" step="0.01" min="0.01" oninput="dzUpdateMicro()"></div>
+    </div>
+
+    <!-- 5 CONVERSION -->
+    <div class="sec dz-sub-ctrl" id="dz_ctrl_conv">
+      <div class="sec-title">Conversión de dureza</div>
+      <div class="field"><label>Escala de entrada</label>
+        <select id="dz_convScale" onchange="dzUpdateConvRange()">
+          <option value="hrc">Rockwell C (HRC)</option>
+          <option value="hb">Brinell (HB)</option>
+        </select>
+      </div>
+      <div class="field"><label>Valor — <span id="dz_convVal">30</span></label>
+        <input type="range" id="dz_convSlider" min="20" max="65" value="30" oninput="dzDrawConv()">
+      </div>
+      <div class="note">Solo aceros. No existe un método general de conversión entre escalas.</div>
+    </div>
+
+    <!-- 6 CORRELACION TS -->
+    <div class="sec dz-sub-ctrl" id="dz_ctrl_ts">
+      <div class="sec-title">Correlación con TS</div>
+      <div class="field"><label>Dureza Brinell HB — <span id="dz_tsVal">200</span></label>
+        <input type="range" id="dz_tsSlider" min="50" max="500" value="200" oninput="dzUpdateTS()">
+      </div>
+      <div class="note">TS(psi) = 500·HB &nbsp;·&nbsp; TS(MPa) = 3,45·HB — válido para aceros.</div>
+    </div>
+
+    <!-- 7 JANKA -->
+    <div class="sec dz-sub-ctrl" id="dz_ctrl_janka">
+      <div class="sec-title">Ensayo Janka (madera)</div>
+      <div class="field"><label>Especie de madera (opcional — carga un ensayo de referencia)</label>
+        <select id="dz_jkMat" onchange="dzApplyJankaMaterial()">
+          <option value="">— Sin material (exploración libre) —</option>
+          <option value="pino">Pino</option>
+          <option value="madera">Roble</option>
+          <option value="algarrobo">Algarrobo</option>
+          <option value="quebracho">Quebracho colorado</option>
+        </select>
+      </div>
+      <div class="field"><label>Fuerza aplicada — <span id="dz_jkVal">200</span> kgf</label>
+        <input type="range" id="dz_jkF" min="10" max="2500" step="5" value="200" oninput="dzUpdateJanka()">
+      </div>
+      <div class="note">El ensayo real no calcula nada: se define directamente como la fuerza necesaria para hundir una bola de acero de 11,28 mm de diámetro hasta la mitad de su diámetro (5,64 mm) en la madera. Acá simulamos la profundidad alcanzada para cada fuerza con un modelo aproximado, solo para poder explorar "qué pasaría si".</div>
+    </div>
+
+    <!-- 8 ESCLEROMETRO -->
+    <div class="sec dz-sub-ctrl" id="dz_ctrl_esclero">
+      <div class="sec-title">Esclerómetro (martillo de Schmidt)</div>
+      <div class="field"><label>Material (opcional — carga un ensayo de referencia)</label>
+        <select id="dz_scMat" onchange="dzApplyScleroMaterial()">
+          <option value="">— Sin material (exploración libre) —</option>
+          <option value="hormigon">Hormigón (≈25 MPa)</option>
+        </select>
+      </div>
+      <div class="field"><label>Orientación del martillo</label>
+        <select id="dz_scOrient" onchange="dzUpdateSclero()">
+          <option value="horizontal">Horizontal (pared)</option>
+          <option value="abajo90">Vertical hacia abajo (piso)</option>
+          <option value="abajo45">45° hacia abajo</option>
+          <option value="arriba45">45° hacia arriba</option>
+          <option value="arriba90">Vertical hacia arriba (techo)</option>
+        </select>
+      </div>
+      <div class="field"><label>Número de rebote medido (R) — <span id="dz_scRVal">30</span></label>
+        <input type="range" id="dz_scR" min="10" max="60" step="1" value="30" oninput="dzUpdateSclero()">
+      </div>
+      <div class="note">Es un método indirecto: no mide resistencia, mide dureza superficial (rebote), y esa lectura necesita corregirse por la orientación del golpe antes de convertirla a resistencia estimada por una curva de correlación. La curva y la corrección usadas acá son aproximadas (cada norma/fabricante publica la propia) y varían con la edad y humedad real del hormigón.</div>
+    </div>
+
+  </aside>
+
+
+
+  <main class="main">
+    <button class="drawer-toggle" onclick="openSidebar()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg> ☰ Parámetros</button>
+
+    <div class="dz-subnav">
+      <button class="dz-subbtn active" data-dz="mohs" onclick="dzSwitch('mohs')">1. Mohs</button>
+      <button class="dz-subbtn" data-dz="rockwell" onclick="dzSwitch('rockwell')">2. Rockwell</button>
+      <button class="dz-subbtn" data-dz="brinell" onclick="dzSwitch('brinell')">3. Brinell</button>
+      <button class="dz-subbtn" data-dz="micro" onclick="dzSwitch('micro')">4. Microdureza</button>
+      <button class="dz-subbtn" data-dz="conv" onclick="dzSwitch('conv')">5. Conversión</button>
+      <button class="dz-subbtn" data-dz="ts" onclick="dzSwitch('ts')">6. Correlación TS</button>
+      <button class="dz-subbtn" data-dz="janka" onclick="dzSwitch('janka')">7. Janka (madera)</button>
+      <button class="dz-subbtn" data-dz="esclero" onclick="dzSwitch('esclero')">8. Esclerómetro (hormigón)</button>
+    </div>
+
+    <!-- ---- 1 MOHS ---- -->
+    <div class="dz-sub-panel active" id="dz_panel_mohs">
+      <div class="chart-card">
+        <div class="chart-title">Escala de Mohs (1822)</div>
+        <div class="note" style="margin-top:0">Escala ordinal cualitativa: un mineral raya a otro si y solo si su número de dureza es mayor. No se usa en ingeniería de metales por falta de precisión y reproducibilidad.</div>
+        <div class="dz-table-wrap"><table id="dz_mohsTable">
+          <thead><tr><th>Dureza</th><th>Mineral</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">¿Puede A rayar a B?</div>
+        <svg id="dz_scratchSvg" viewBox="0 0 300 90" width="100%" height="90" class="dz-viz-wrap"></svg>
+        <div class="info-bar" id="dz_mohsResult" style="margin-top:8px"></div>
+      </div>
+    </div>
+
+    <!-- ---- 2 ROCKWELL ---- -->
+    <div class="dz-sub-panel" id="dz_panel_rockwell">
+      <div class="chart-card">
+        <div class="chart-title">Escalas Rockwell</div>
+        <div class="note" style="margin-top:0">Mide la <em>profundidad</em> de penetración diferencial entre carga menor y carga mayor. No hace falta memorizar las escalas: en la práctica se consultan tablas o el equipo la indica. Hacé clic en una fila para seleccionarla.</div>
+        <div class="dz-table-wrap"><table>
+          <thead id="dz_rkHead"></thead>
+          <tbody id="dz_rkBody"></tbody>
+        </table></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-hdr"><div class="chart-title">Resultado simulado</div></div>
+        <div class="info-bar" id="dz_rkSelectedInfo">Elegí una fila de la tabla ↑</div>
+        <div class="results-grid" style="margin-top:8px">
+          <div class="rcard"><div class="rl">DUREZA</div><div class="rv" id="dz_rkNumber">—</div></div>
+        </div>
+        <div class="info-bar" id="dz_rkMatCompare" style="display:none;margin-top:8px;border-left-color:var(--accent)"></div>
+        <div class="dz-viz-wrap" style="margin-top:8px"><svg id="dz_rkDepthSvg" viewBox="0 0 260 160" width="100%" height="160"></svg></div>
+        <div class="note">Cuanto más blando el material, mayor y más profunda la huella → menor número de dureza. (Valor ilustrativo, no un cálculo físico real.)</div>
+      </div>
+    </div>
+
+    <!-- ---- 3 BRINELL ---- -->
+    <div class="dz-sub-panel" id="dz_panel_brinell">
+      <div class="chart-card">
+        <div class="chart-title">Ensayo Brinell</div>
+        <div class="note" style="margin-top:0">A diferencia del Rockwell (profundidad), el Brinell mide el <em>diámetro</em> de la huella. Penetrador esférico D = 10,00 mm; cargas normalizadas de 500 a 3000 kg.</div>
+        <div class="results-grid">
+          <div class="rcard" style="grid-column:1/-1"><div class="rl">FÓRMULA</div><div class="rv" style="font-size:12px">HB = 2P / [ πD (D − √(D² − d²)) ]</div></div>
+          <div class="rcard"><div class="rl">HB CALCULADO</div><div class="rv" id="dz_brResult">—</div></div>
+        </div>
+        <div class="info-bar" id="dz_brSub" style="margin-top:8px"></div>
+        <div class="info-bar" id="dz_brMatCompare" style="display:none;margin-top:8px;border-left-color:var(--accent)"></div>
+        <div class="info-bar" id="dz_brWarn" style="display:none;margin-top:8px;border-left-color:var(--neck)"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Huella (vista superior)</div>
+        <div class="dz-viz-wrap"><svg id="dz_brSvg" viewBox="0 0 220 220" width="100%" height="220"></svg></div>
+        <div class="note">Se mide con lupa graduada y se convierte a HB por tabla; requiere superficie perfectamente lisa y espesor ≥ 10× la profundidad de la huella.</div>
+      </div>
+    </div>
+
+    <!-- ---- 4 MICRODUREZA ---- -->
+    <div class="dz-sub-panel" id="dz_panel_micro">
+      <div class="chart-card">
+        <div class="chart-title">Microdureza — Vickers y Knoop</div>
+        <div class="note" style="margin-top:0">Penetrador piramidal de diamante. Se usan para materiales muy pequeños o frágiles (p. ej. cerámicos), con huella medida al microscopio.</div>
+        <div class="results-grid">
+          <div class="rcard"><div class="rl">HV = 1,854·P/d₁²</div><div class="rv" id="dz_vResult">—</div></div>
+          <div class="rcard"><div class="rl">HK = 14,2·P/l²</div><div class="rv" id="dz_kResult">—</div></div>
+        </div>
+        <div class="info-bar" id="dz_vMatCompare" style="display:none;margin-top:8px;border-left-color:var(--accent)"></div>
+        <div class="info-bar" id="dz_microWarn" style="display:none;margin-top:8px;border-left-color:var(--neck)"></div>
+      </div>
+    </div>
+
+    <!-- ---- 5 CONVERSION ---- -->
+    <div class="dz-sub-panel" id="dz_panel_conv">
+      <div class="chart-card">
+        <div class="chart-title">Conversión de la dureza</div>
+        <div class="note" style="margin-top:0">No existe un método general para convertir entre escalas: los datos son empíricos y dependen del tipo de material. La conversión más confiable es la de <strong>aceros</strong>.</div>
+        <div class="dz-viz-wrap"><svg id="dz_convSvg" viewBox="0 0 700 220" width="100%" height="230"></svg></div>
+        <div class="note">Valores de referencia aproximados para aceros. No extrapolar a otras aleaciones.</div>
+      </div>
+    </div>
+
+    <!-- ---- 6 CORRELACION TS ---- -->
+    <div class="dz-sub-panel" id="dz_panel_ts">
+      <div class="chart-card">
+        <div class="chart-title">Correlación dureza — resistencia a la tracción</div>
+        <div class="note" style="margin-top:0">Ambas propiedades indican la resistencia a la deformación plástica, por lo que son aproximadamente proporcionales (válido para aceros).</div>
+        <div class="results-grid">
+          <div class="rcard"><div class="rl">TS (psi) = 500·HB</div><div class="rv" id="dz_tsPsi">—</div></div>
+          <div class="rcard"><div class="rl">TS (MPa) = 3,45·HB</div><div class="rv" id="dz_tsMpa">—</div></div>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Resistencia a la tracción vs. HB</div>
+        <div class="chart-wrap" style="height:220px"><canvas id="dz_tsChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- ---- 7 JANKA ---- -->
+    <div class="dz-sub-panel" id="dz_panel_janka">
+      <div class="chart-card">
+        <div class="chart-title">Bola de acero penetrando en la madera</div>
+        <div class="note" style="margin-top:0">La dureza Janka de un material ES, por definición, la fuerza que hace que la bola se hunda exactamente hasta la mitad de su diámetro (línea punteada). No es una fórmula: es una fuerza de referencia medida directamente.</div>
+        <div class="dz-viz-wrap"><svg id="dz_jkSvg" viewBox="0 0 260 180" width="100%" height="180"></svg></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-hdr"><div class="chart-title">Resultado simulado</div></div>
+        <div class="results-grid">
+          <div class="rcard"><div class="rl">FUERZA APLICADA</div><div class="rv" id="dz_jkForce">—</div></div>
+          <div class="rcard"><div class="rl">PROFUNDIDAD ALCANZADA</div><div class="rv" id="dz_jkDepth">—</div></div>
+        </div>
+        <div class="info-bar" id="dz_jkMatCompare" style="display:none;margin-top:8px;border-left-color:var(--accent)"></div>
+        <div class="note">El modelo de profundidad usado acá es una aproximación ilustrativa (no una medición física real), calibrada para que cada madera alcance la mitad del diámetro de la bola justo en su fuerza Janka de referencia bibliográfica.</div>
+      </div>
+    </div>
+
+    <!-- ---- 8 ESCLEROMETRO ---- -->
+    <div class="dz-sub-panel" id="dz_panel_esclero">
+      <div class="chart-card">
+        <div class="chart-title">Martillo de Schmidt — corrección por orientación</div>
+        <div class="note" style="margin-top:0">El rebote real depende de si la gravedad ayuda o se opone al retroceso de la masa interna, según hacia dónde apunte el martillo. Por eso el R medido se corrige a un valor "equivalente horizontal" antes de leer la curva de resistencia.</div>
+        <div class="dz-viz-wrap"><svg id="dz_scSvg" viewBox="0 0 260 180" width="100%" height="180"></svg></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-hdr"><div class="chart-title">Resultado simulado</div></div>
+        <div class="results-grid">
+          <div class="rcard"><div class="rl">R MEDIDO (CRUDO)</div><div class="rv" id="dz_scRRaw">—</div></div>
+          <div class="rcard"><div class="rl">R CORREGIDO (HORIZONTAL)</div><div class="rv" id="dz_scRCorr">—</div></div>
+          <div class="rcard"><div class="rl">RESISTENCIA ESTIMADA</div><div class="rv" id="dz_scFc">—</div></div>
+        </div>
+        <div class="info-bar" id="dz_scMatCompare" style="display:none;margin-top:8px;border-left-color:var(--accent)"></div>
+        <div class="note">Curva de correlación R→resistencia y tabla de corrección por ángulo: valores aproximados de referencia (cada norma/fabricante publica la propia curva calibrada). No reemplaza un ensayo de compresión sobre probetas.</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="page" id="tab-rotura">
+  <aside class="sidebar">
+<div style="display:flex;justify-content:flex-end;margin-bottom:8px;"><button class="drawer-close-btn" onclick="closeSidebar()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted);padding:4px 8px;line-height:1">✕</button></div>
+
+    <div class="sec">
+      <div class="sec-title">Fractura, fatiga y fluencia</div>
+      <div class="note" style="margin-top:0">Cómo y por qué rompen los materiales: separación súbita bajo carga estática (fractura), rotura progresiva por carga cíclica (fatiga) y deformación lenta bajo carga sostenida a alta temperatura (fluencia). Elegí una sección en el panel principal.</div>
+    </div>
+
+    <!-- FRACTURA -->
+    <div class="sec rt-sub-ctrl active" id="rt_ctrl_fr_fundamentos">
+      <div class="sec-title">Fundamentos de fractura</div>
+      <div class="note" style="margin-top:0">Sección conceptual — sin parámetros para ajustar.</div>
+    </div>
+    <div class="sec rt-sub-ctrl" id="rt_ctrl_fr_ductil">
+      <div class="sec-title">Fractura dúctil</div>
+      <div class="note" style="margin-top:0">Sección conceptual — sin parámetros para ajustar.</div>
+    </div>
+    <div class="sec rt-sub-ctrl" id="rt_ctrl_fr_fragil">
+      <div class="sec-title">Fractura frágil</div>
+      <div class="note" style="margin-top:0">Sección conceptual — sin parámetros para ajustar.</div>
+    </div>
+    <div class="sec rt-sub-ctrl" id="rt_ctrl_fr_mecanica">
+      <div class="sec-title">Mecánica de la fractura</div>
+      <div class="field"><label>Preset de tenacidad K_IC<button type="button" class="help-btn" onclick="showHelp('rt_kic',event)">?</button></label>
+        <select id="rt_kicPreset" onchange="frApplyKicPreset()">
+          <option value="">— Personalizado —</option>
+          <option value="53">Acero de alta resistencia (≈53 MPa√m)</option>
+          <option value="98">Acero estructural común (≈98 MPa√m)</option>
+          <option value="24">Aluminio 7075-T651 (≈24 MPa√m)</option>
+          <option value="55">Titanio Ti-6Al-4V (≈55 MPa√m)</option>
+          <option value="4.5">Cerámica (Al₂O₃) (≈4.5 MPa√m)</option>
+          <option value="0.8">Vidrio de sílice (≈0.8 MPa√m)</option>
+          <option value="1.2">Polímero (PMMA) (≈1.2 MPa√m)</option>
+        </select>
+      </div>
+      <div class="field"><label>Tenacidad a la fractura <code>K_IC</code> (MPa·√m)<button type="button" class="help-btn" onclick="showHelp('rt_kic',event)">?</button></label>
+        <input type="number" id="rt_kic" value="53" min="0.1" max="300" step="0.1" oninput="frUpdateMecanica()"></div>
+      <div class="field"><label>Tensión aplicada <code>σ</code> (MPa)<button type="button" class="help-btn" onclick="showHelp('rt_sigma',event)">?</button></label>
+        <input type="number" id="rt_sigma" value="300" min="1" max="3000" step="1" oninput="frUpdateMecanica()"></div>
+      <div class="field"><label>Longitud de grieta <code>a</code> (mm)<button type="button" class="help-btn" onclick="showHelp('rt_a',event)">?</button></label>
+        <input type="number" id="rt_a" value="2" min="0.01" max="50" step="0.01" oninput="frUpdateMecanica()"></div>
+      <div class="field"><label>Factor geométrico <code>Y</code><button type="button" class="help-btn" onclick="showHelp('rt_y',event)">?</button></label>
+        <input type="number" id="rt_yfac" value="1.0" min="0.5" max="2.5" step="0.05" oninput="frUpdateMecanica()"></div>
+      <button class="btn-secondary" onclick="exportRoturaChart('mecanica_fractura.png')">⬇ Exportar imagen</button>
+    </div>
+    <div class="sec rt-sub-ctrl" id="rt_ctrl_fr_impacto">
+      <div class="sec-title">Ensayo de impacto Charpy</div>
+      <div class="field"><label>Material</label>
+        <select id="rt_impactoMat" onchange="frUpdateImpacto()">
+          <option value="bajoC">Acero al carbono (BCC) — con transición marcada</option>
+          <option value="aleado">Acero aleado de baja aleación (BCC)</option>
+          <option value="fcc">Aluminio / acero inoxidable austenítico (FCC) — sin transición</option>
+        </select>
+      </div>
+      <div class="note">La curva muestra energía absorbida en función de la temperatura de ensayo. La temperatura de transición dúctil-frágil (DBTT) es donde la energía cae abruptamente.</div>
+      <button class="btn-secondary" onclick="exportRoturaChart('ensayo_charpy.png')">⬇ Exportar imagen</button>
+    </div>
+
+    <!-- FATIGA (placeholder) -->
+    <div class="sec rt-sub-ctrl" id="rt_ctrl_ft_ciclicas">
+      <div class="sec-title">Tensiones cíclicas</div>
+      <div class="field"><label>Tensión máxima <code>σ_max</code> (MPa)<button type="button" class="help-btn" onclick="showHelp('ft_smax',event)">?</button></label>
+        <input type="number" id="ft_smax" value="250" min="-1000" max="1000" step="5" oninput="ftUpdateCiclicas()"></div>
+      <div class="field"><label>Tensión mínima <code>σ_min</code> (MPa)<button type="button" class="help-btn" onclick="showHelp('ft_smin',event)">?</button></label>
+        <input type="number" id="ft_smin" value="-250" min="-1000" max="1000" step="5" oninput="ftUpdateCiclicas()"></div>
+      <div class="note">Probá los 3 casos típicos:</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button type="button" class="mini-btn" onclick="ftPresetCiclo('reversa')">Alternada pura</button>
+        <button type="button" class="mini-btn" onclick="ftPresetCiclo('repetida')">Repetida (σmin=0)</button>
+        <button type="button" class="mini-btn" onclick="ftPresetCiclo('fluctuante')">Fluctuante</button>
+      </div>
+      <button class="btn-secondary" onclick="exportRoturaChart('tensiones_ciclicas.png')">⬇ Exportar imagen</button>
+    </div>
+
+    <div class="sec rt-sub-ctrl" id="rt_ctrl_ft_sn">
+      <div class="sec-title">Curva S-N</div>
+      <div class="field"><label>Material</label>
+        <select id="ft_snMat" onchange="ftUpdateSN()">
+          <option value="acero1045">Acero 1045 (con límite de fatiga)</option>
+          <option value="acero4340">Acero 4340 templado y revenido</option>
+          <option value="al2014">Aluminio 2014-T6 (sin límite de fatiga)</option>
+        </select>
+      </div>
+      <div class="field"><label>Amplitud de tensión <code>σ_a</code> (MPa)<button type="button" class="help-btn" onclick="showHelp('ft_sa',event)">?</button></label>
+        <input type="range" id="ft_sa" value="200" min="20" max="500" step="1" oninput="ftUpdateSN()">
+        <div class="note" style="margin-top:2px" id="ft_saVal">200 MPa</div></div>
+      <button class="btn-secondary" onclick="exportRoturaChart('curva_sn.png')">⬇ Exportar imagen</button>
+    </div>
+
+    <div class="sec rt-sub-ctrl" id="rt_ctrl_ft_iniciacion">
+      <div class="sec-title">Iniciación y propagación</div>
+      <div class="note" style="margin-top:0">Sección conceptual — sin parámetros para ajustar.</div>
+    </div>
+
+    <div class="sec rt-sub-ctrl" id="rt_ctrl_ft_velocidad">
+      <div class="sec-title">Velocidad de propagación (Ley de Paris)</div>
+      <div class="field"><label>Material</label>
+        <select id="ft_parisMat" onchange="ftApplyParisPreset()">
+          <option value="acero">Acero estructural (C≈6.9e-12, m≈3.0)</option>
+          <option value="aluminio">Aleación de aluminio (C≈1.8e-11, m≈3.5)</option>
+          <option value="titanio">Aleación de titanio (C≈9.0e-12, m≈4.0)</option>
+          <option value="custom">— Personalizado —</option>
+        </select>
+      </div>
+      <div class="field"><label><code>C</code> (constante del material)<button type="button" class="help-btn" onclick="showHelp('ft_parisC',event)">?</button></label>
+        <input type="number" id="ft_parisC" value="6.9e-12" step="any" oninput="ftUpdateVelocidad()"></div>
+      <div class="field"><label><code>m</code> (exponente de Paris)<button type="button" class="help-btn" onclick="showHelp('ft_parisM',event)">?</button></label>
+        <input type="number" id="ft_parisM" value="3.0" min="1" max="8" step="0.1" oninput="ftUpdateVelocidad()"></div>
+      <div class="field"><label>ΔK actual (MPa·√m)</label>
+        <input type="range" id="ft_dk" value="15" min="2" max="60" step="0.5" oninput="ftUpdateVelocidad()">
+        <div class="note" style="margin-top:2px" id="ft_dkVal">15 MPa·√m</div></div>
+      <button class="btn-secondary" onclick="exportRoturaChart('ley_de_paris.png')">⬇ Exportar imagen</button>
+    </div>
+
+    <div class="sec rt-sub-ctrl" id="rt_ctrl_ft_factores">
+      <div class="sec-title">Factores que afectan la vida a fatiga</div>
+      <div class="field"><label>Límite de fatiga base <code>Se'</code> (MPa)<button type="button" class="help-btn" onclick="showHelp('ft_sebase',event)">?</button></label>
+        <input type="number" id="ft_seBase" value="350" min="10" max="1000" step="5" oninput="ftUpdateFactores()"></div>
+      <div class="field"><label>Acabado superficial <code>k_a</code><button type="button" class="help-btn" onclick="showHelp('ft_ka',event)">?</button></label>
+        <select id="ft_ka" onchange="ftUpdateFactores()">
+          <option value="1.0">Pulido (k_a=1.00)</option>
+          <option value="0.9" selected>Rectificado (k_a=0.90)</option>
+          <option value="0.7">Maquinado (k_a=0.70)</option>
+          <option value="0.45">Laminado en caliente (k_a=0.45)</option>
+          <option value="0.25">Forjado (k_a=0.25)</option>
+        </select></div>
+      <div class="field"><label>Tamaño <code>k_b</code><button type="button" class="help-btn" onclick="showHelp('ft_kb',event)">?</button></label>
+        <input type="range" id="ft_kb" value="0.9" min="0.6" max="1.0" step="0.01" oninput="ftUpdateFactores()">
+        <div class="note" style="margin-top:2px" id="ft_kbVal">0.90</div></div>
+      <div class="field"><label>Tipo de carga <code>k_c</code></label>
+        <select id="ft_kc" onchange="ftUpdateFactores()">
+          <option value="1.0" selected>Flexión (k_c=1.00)</option>
+          <option value="0.85">Axial (k_c=0.85)</option>
+          <option value="0.59">Torsión (k_c=0.59)</option>
+        </select></div>
+      <div class="field"><label>Temperatura <code>k_d</code></label>
+        <input type="range" id="ft_kd" value="1.0" min="0.5" max="1.0" step="0.01" oninput="ftUpdateFactores()">
+        <div class="note" style="margin-top:2px" id="ft_kdVal">1.00 (T ambiente)</div></div>
+      <div class="field"><label>Confiabilidad <code>k_e</code></label>
+        <select id="ft_ke" onchange="ftUpdateFactores()">
+          <option value="1.0">50% (k_e=1.000)</option>
+          <option value="0.897" selected>90% (k_e=0.897)</option>
+          <option value="0.814">99% (k_e=0.814)</option>
+          <option value="0.753">99.9% (k_e=0.753)</option>
+        </select></div>
+      <button class="btn-secondary" onclick="exportRoturaChart('factores_marin.png')">⬇ Exportar imagen</button>
+    </div>
+
+    <div class="sec rt-sub-ctrl" id="rt_ctrl_ft_medio">
+      <div class="sec-title">Influencia del medio</div>
+      <div class="note" style="margin-top:0">Sección conceptual — sin parámetros para ajustar.</div>
+    </div>
+
+    <!-- FLUENCIA (placeholder) -->
+    <div class="sec rt-sub-ctrl" id="rt_ctrl_fl_comportamiento">
+      <div class="sec-title">Comportamiento bajo fluencia</div>
+      <div class="field"><label>Material<button type="button" class="help-btn" onclick="showHelp('fl_mat',event)">?</button></label>
+        <select id="fl_mat1" onchange="flUpdateComportamiento()">
+          <option value="inox">Acero inoxidable austenítico</option>
+          <option value="superaleacion">Superaleación base Ni (tipo Inconel)</option>
+          <option value="aluminio">Aleación de aluminio</option>
+        </select></div>
+      <div class="field"><label>Tensión <code>σ</code> (MPa)</label>
+        <input type="range" id="fl_sigma1" value="100" min="10" max="400" step="5" oninput="flUpdateComportamiento()">
+        <div class="note" style="margin-top:2px" id="fl_sigma1Val">100 MPa</div></div>
+      <div class="field"><label>Temperatura <code>T</code> (°C)</label>
+        <input type="range" id="fl_temp1" value="600" min="300" max="1100" step="10" oninput="flUpdateComportamiento()">
+        <div class="note" style="margin-top:2px" id="fl_temp1Val">600 °C</div></div>
+      <div class="note">Valores de K, n y Q_c ilustrativos con fines didácticos — no reemplazan datos de ensayo reales.</div>
+      <button class="btn-secondary" onclick="exportRoturaChart('curva_fluencia.png')">⬇ Exportar imagen</button>
+    </div>
+
+    <div class="sec rt-sub-ctrl" id="rt_ctrl_fl_tension_temp">
+      <div class="sec-title">Influencia de tensión y temperatura</div>
+      <div class="field"><label>Material</label>
+        <select id="fl_mat2" onchange="flUpdateTensionTemp()">
+          <option value="inox">Acero inoxidable austenítico</option>
+          <option value="superaleacion">Superaleación base Ni (tipo Inconel)</option>
+          <option value="aluminio">Aleación de aluminio</option>
+        </select></div>
+      <div class="field"><label>Tensión <code>σ</code> (MPa)<button type="button" class="help-btn" onclick="showHelp('fl_sigma',event)">?</button></label>
+        <input type="range" id="fl_sigma2" value="100" min="10" max="400" step="5" oninput="flUpdateTensionTemp()">
+        <div class="note" style="margin-top:2px" id="fl_sigma2Val">100 MPa</div></div>
+      <div class="field"><label>Temperatura <code>T</code> (°C)<button type="button" class="help-btn" onclick="showHelp('fl_temp',event)">?</button></label>
+        <input type="range" id="fl_temp2" value="600" min="300" max="1100" step="10" oninput="flUpdateTensionTemp()">
+        <div class="note" style="margin-top:2px" id="fl_temp2Val">600 °C</div></div>
+      <button class="btn-secondary" onclick="exportRoturaChart('arrhenius_fluencia.png')">⬇ Exportar imagen</button>
+    </div>
+
+    <div class="sec rt-sub-ctrl" id="rt_ctrl_fl_extrapolacion">
+      <div class="sec-title">Extrapolación (Larson-Miller)</div>
+      <div class="field"><label>Constante del material <code>C</code><button type="button" class="help-btn" onclick="showHelp('fl_lmc',event)">?</button></label>
+        <input type="number" id="fl_lmC" value="20" min="10" max="30" step="0.5" oninput="flUpdateExtrapolacion()"></div>
+      <div class="field"><label>Ensayo: temperatura (°C)</label>
+        <input type="number" id="fl_ttest" value="800" min="200" max="1300" step="5" oninput="flUpdateExtrapolacion()"></div>
+      <div class="field"><label>Ensayo: tiempo a rotura (h)</label>
+        <input type="number" id="fl_trtest" value="100" min="1" max="10000" step="1" oninput="flUpdateExtrapolacion()"></div>
+      <div class="field"><label>Servicio: temperatura (°C)</label>
+        <input type="range" id="fl_tserv" value="600" min="200" max="1300" step="5" oninput="flUpdateExtrapolacion()">
+        <div class="note" style="margin-top:2px" id="fl_tservVal">600 °C</div></div>
+      <button class="btn-secondary" onclick="exportRoturaChart('larson_miller.png')">⬇ Exportar imagen</button>
+    </div>
+
+    <div class="sec rt-sub-ctrl" id="rt_ctrl_fl_aleaciones">
+      <div class="sec-title">Aleaciones para T elevadas</div>
+      <div class="note" style="margin-top:0">Sección conceptual — sin parámetros para ajustar.</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <button class="drawer-toggle" onclick="openSidebar()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg> ☰ Parámetros</button>
+
+    <div class="rt-subnav">
+      <span class="rt-group-label">Fractura</span>
+      <button class="rt-subbtn active" data-rt="fr_fundamentos" onclick="rtSwitch('fr_fundamentos')">1. Fundamentos</button>
+      <button class="rt-subbtn" data-rt="fr_ductil" onclick="rtSwitch('fr_ductil')">2. Fractura dúctil</button>
+      <button class="rt-subbtn" data-rt="fr_fragil" onclick="rtSwitch('fr_fragil')">3. Fractura frágil</button>
+      <button class="rt-subbtn" data-rt="fr_mecanica" onclick="rtSwitch('fr_mecanica')">4. Mecánica de la fractura</button>
+      <button class="rt-subbtn" data-rt="fr_impacto" onclick="rtSwitch('fr_impacto')">5. Ensayos de impacto</button>
+      <span class="rt-group-label">Fatiga</span>
+      <button class="rt-subbtn" data-rt="ft_ciclicas" onclick="rtSwitch('ft_ciclicas')">1. Tensiones cíclicas</button>
+      <button class="rt-subbtn" data-rt="ft_sn" onclick="rtSwitch('ft_sn')">2. Curva S-N</button>
+      <button class="rt-subbtn" data-rt="ft_iniciacion" onclick="rtSwitch('ft_iniciacion')">3. Iniciación y propagación</button>
+      <button class="rt-subbtn" data-rt="ft_velocidad" onclick="rtSwitch('ft_velocidad')">4. Velocidad de propagación</button>
+      <button class="rt-subbtn" data-rt="ft_factores" onclick="rtSwitch('ft_factores')">5. Factores que afectan la vida</button>
+      <button class="rt-subbtn" data-rt="ft_medio" onclick="rtSwitch('ft_medio')">6. Influencia del medio</button>
+      <span class="rt-group-label">Fluencia en caliente</span>
+      <button class="rt-subbtn" data-rt="fl_comportamiento" onclick="rtSwitch('fl_comportamiento')">1. Comportamiento bajo fluencia</button>
+      <button class="rt-subbtn" data-rt="fl_tension_temp" onclick="rtSwitch('fl_tension_temp')">2. Influencia tensión/temperatura</button>
+      <button class="rt-subbtn" data-rt="fl_extrapolacion" onclick="rtSwitch('fl_extrapolacion')">3. Métodos de extrapolación</button>
+      <button class="rt-subbtn" data-rt="fl_aleaciones" onclick="rtSwitch('fl_aleaciones')">4. Aleaciones para T elevadas</button>
+    </div>
+
+    <!-- ---- FR 1. FUNDAMENTOS ---- -->
+    <div class="rt-sub-panel active" id="rt_panel_fr_fundamentos">
+      <div class="chart-card">
+        <div class="chart-title">¿Qué es la fractura?</div>
+        <div class="note" style="margin-top:0">La fractura es la separación de un cuerpo sólido en dos o más partes, en respuesta a una tensión aplicada de forma estática (a temperaturas bajas en relación a la de fusión del material) y a velocidades de deformación relativamente lentas. Todo proceso de fractura consta de dos etapas:</div>
+        <div class="rt-diagram">
+          <div class="rt-diagram-step">
+            <svg width="70" height="50" viewBox="0 0 70 50"><rect x="5" y="20" width="60" height="10" fill="none" stroke="var(--accent)" stroke-width="2"/><circle cx="35" cy="25" r="2.5" fill="var(--frac)"/></svg>
+            1. Formación (nucleación) de una grieta
+          </div>
+          <div class="rt-diagram-step">
+            <svg width="70" height="50" viewBox="0 0 70 50"><rect x="5" y="20" width="60" height="10" fill="none" stroke="var(--accent)" stroke-width="2"/><path d="M35 20 L30 30 M35 20 L40 30" stroke="var(--frac)" stroke-width="2"/></svg>
+            2. Propagación de la grieta
+          </div>
+          <div class="rt-diagram-step">
+            <svg width="70" height="50" viewBox="0 0 70 50"><rect x="5" y="20" width="25" height="10" fill="none" stroke="var(--accent)" stroke-width="2"/><rect x="40" y="20" width="25" height="10" fill="none" stroke="var(--accent)" stroke-width="2"/></svg>
+            3. Fractura final (separación)
+          </div>
+        </div>
+        <div class="note">El comportamiento del material durante la propagación define el modo de fractura: <b>dúctil</b> (propagación lenta y estable, con deformación plástica apreciable) o <b>frágil</b> (propagación rápida e inestable, sin aviso previo).</div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Dúctil vs. frágil — comparación general</div>
+        <div class="dz-table-wrap"><table>
+          <thead><tr><th>Característica</th><th>Fractura dúctil</th><th>Fractura frágil</th></tr></thead>
+          <tbody>
+            <tr><td>Deformación plástica</td><td>Considerable, con estricción</td><td>Poca o ninguna</td></tr>
+            <tr><td>Velocidad de propagación</td><td>Lenta y estable</td><td>Rápida e inestable</td></tr>
+            <tr><td>Energía absorbida</td><td>Alta (mayor tenacidad)</td><td>Baja</td></tr>
+            <tr><td>Aviso previo</td><td>Sí (deformación visible)</td><td>No — sucede sin aviso</td></tr>
+            <tr><td>Superficie de fractura</td><td>Fibrosa, opaca</td><td>Granular o brillante</td></tr>
+            <tr><td>Ejemplos típicos</td><td>Metales dúctiles (acero, aluminio, cobre)</td><td>Cerámicas, vidrios, hierro fundido, metales a baja T</td></tr>
+          </tbody>
+        </table></div>
+        <div class="note">Factores que influyen en el modo de fractura de un mismo material: la <b>temperatura</b> (a menor T, más frágil), el <b>estado tensional</b> (la triaxialidad de tensiones, como en una entalla, favorece la fractura frágil) y la <b>velocidad de aplicación de la carga</b> (cargas de impacto favorecen fractura frágil incluso en metales normalmente dúctiles).</div>
+      </div>
+    </div>
+
+    <!-- ---- FR 2. DÚCTIL ---- -->
+    <div class="rt-sub-panel" id="rt_panel_fr_ductil">
+      <div class="chart-card">
+        <div class="chart-title">Fractura dúctil "copa y cono" (cup-and-cone)</div>
+        <svg id="rt_ductilSvg" width="100%" height="120" viewBox="0 0 560 120"></svg>
+        <div class="note" style="margin-top:0">Es el modo de fractura más común en metales dúctiles bajo tracción uniaxial. Ocurre en 4 etapas, luego de que la probeta alcanza la resistencia máxima (TS) y comienza la estricción:</div>
+        <ol style="font-size:12px;color:var(--muted);line-height:1.6;padding-left:18px;margin:4px 0 0">
+          <li><b>Estricción (necking):</b> la sección se reduce localmente al superar TS.</li>
+          <li><b>Formación de microcavidades:</b> en el centro de la zona de estricción, donde la triaxialidad de tensiones es máxima.</li>
+          <li><b>Coalescencia de cavidades:</b> las microcavidades crecen y se unen, formando una grieta interna elíptica perpendicular al eje de carga.</li>
+          <li><b>Corte final a 45°:</b> la grieta se propaga hacia la superficie por cizalladura, dejando la típica geometría de "copa" en una mitad y "cono" en la otra.</li>
+        </ol>
+        <div class="note">Cuanto más dúctil el material, más pronunciada la estricción antes de romper (hasta el caso límite de fractura "en punta de aguja", con reducción de área cercana al 100%, típica en oro o plomo puros a temperatura ambiente).</div>
+      </div>
+    </div>
+
+    <!-- ---- FR 3. FRÁGIL ---- -->
+    <div class="rt-sub-panel" id="rt_panel_fr_fragil">
+      <div class="chart-card">
+        <div class="chart-title">Fractura frágil — transgranular vs. intergranular</div>
+        <svg id="rt_fragilSvg" width="100%" height="140" viewBox="0 0 560 140"></svg>
+        <div class="note" style="margin-top:0">En la fractura frágil, la grieta se propaga casi perpendicular a la tensión aplicada, con muy poca deformación plástica, y a alta velocidad (puede llegar a ser catastrófica). Se distinguen dos trayectorias según el material policristalino:</div>
+        <div class="dz-table-wrap"><table>
+          <thead><tr><th>Tipo</th><th>Trayectoria</th><th>Cuándo ocurre</th></tr></thead>
+          <tbody>
+            <tr><td><b>Transgranular</b></td><td>Atraviesa el interior de los granos, por clivaje a lo largo de planos cristalográficos específicos</td><td>Material homogéneo, sin debilitamiento de bordes de grano</td></tr>
+            <tr><td><b>Intergranular</b></td><td>Sigue los límites de grano</td><td>Bordes de grano fragilizados: precipitados, corrosión bajo tensión, ataque por hidrógeno, sensibilización</td></tr>
+          </tbody>
+        </table></div>
+        <div class="note">En análisis de fallas, las "marcas de río" (river patterns) o "marcas de chevron" que aparecen en la superficie de fractura frágil apuntan hacia el origen de la grieta, y son una herramienta forense clave para determinar dónde empezó la falla.</div>
+      </div>
+    </div>
+
+    <!-- ---- FR 4. MECÁNICA DE LA FRACTURA ---- -->
+    <div class="rt-sub-panel" id="rt_panel_fr_mecanica">
+      <div class="metrics-row">
+        <div class="mcard"><div class="ml">Factor de intensidad K_I<button type="button" class="help-btn" onclick="showHelp('rt_ki',event)">?</button></div><div class="mv" id="rt_mKi">—</div><div class="ms">MPa·√m</div></div>
+        <div class="mcard"><div class="ml">Longitud crítica <code>a_c</code></div><div class="mv" id="rt_mAc">—</div><div class="ms">mm</div></div>
+        <div class="mcard"><div class="ml">Margen K_IC / K_I</div><div class="mv" id="rt_mMargen">—</div><div class="ms">factor</div></div>
+        <div class="mcard"><div class="ml">Veredicto</div><div class="mv" id="rt_mVeredicto" style="font-size:13px">—</div><div class="ms"></div></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">K_I(a) vs. K_IC — grieta crítica</div>
+        <div style="position:relative;height:260px"><canvas id="rt_mecaChart"></canvas></div>
+        <div class="note" style="margin-top:0">Una grieta preexistente actúa como concentrador de tensiones. El factor de intensidad de tensiones cuantifica la severidad de ese campo de tensiones en la punta de la grieta: <code>K_I = Y·σ·√(π·a)</code>, donde σ es la tensión nominal aplicada, a es la (semi)longitud de la grieta y Y es un factor geométrico adimensional (≈1 para una grieta pasante centrada en una placa muy ancha).</div>
+        <div class="note">La fractura ocurre de forma súbita e inestable cuando K_I alcanza el valor crítico del material, <code>K_IC</code> (tenacidad a la fractura en deformación plana). Despejando la longitud de grieta para la cual esto sucede se obtiene la <b>longitud de grieta crítica</b>: <code>a_c = (1/π)·(K_IC/(Y·σ))²</code>. Grietas menores a a_c son estables bajo esa tensión; a partir de a_c, la propagación es catastrófica.</div>
+      </div>
+    </div>
+
+    <!-- ---- FR 5. IMPACTO ---- -->
+    <div class="rt-sub-panel" id="rt_panel_fr_impacto">
+      <div class="chart-card">
+        <div class="chart-title">Ensayo Charpy — energía absorbida vs. temperatura</div>
+        <div style="position:relative;height:280px"><canvas id="rt_impactoChart"></canvas></div>
+        <div class="note" style="margin-top:0">El ensayo Charpy (o Izod) mide la energía absorbida al fracturar de un solo golpe una probeta con una muesca en V, mediante un péndulo cuya pérdida de altura tras el impacto es proporcional a la energía consumida en la fractura.</div>
+        <div class="note">Su principal utilidad es detectar la <b>temperatura de transición dúctil-frágil (DBTT)</b>: por encima de ella el material absorbe mucha energía (rotura dúctil), y por debajo cae abruptamente (rotura frágil). Es crítico para aceros estructurales (puentes, buques, tuberías) que operan a baja temperatura — el ejemplo histórico más citado es la fragilización de los aceros del Titanic y de los "Liberty ships" en agua fría. Los metales FCC (aluminio, cobre, aceros inoxidables austeníticos) no muestran una transición marcada y mantienen buena tenacidad incluso a temperaturas criogénicas.</div>
+      </div>
+    </div>
+
+    <!-- ---- FT (placeholders) ---- -->
+    <!-- ---- FT 1. TENSIONES CÍCLICAS ---- -->
+    <div class="rt-sub-panel" id="rt_panel_ft_ciclicas">
+      <div class="metrics-row">
+        <div class="mcard"><div class="ml">Amplitud σ_a</div><div class="mv" id="ft_mSa">—</div><div class="ms">MPa</div></div>
+        <div class="mcard"><div class="ml">Media σ_m</div><div class="mv" id="ft_mSm">—</div><div class="ms">MPa</div></div>
+        <div class="mcard"><div class="ml">Rango Δσ</div><div class="mv" id="ft_mSr">—</div><div class="ms">MPa</div></div>
+        <div class="mcard"><div class="ml">Relación de tensiones R</div><div class="mv" id="ft_mR">—</div><div class="ms">σ_min/σ_max</div></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Tensión vs. tiempo (ciclo de carga)</div>
+        <div style="position:relative;height:240px"><canvas id="ft_cicloChart"></canvas></div>
+        <div class="note" style="margin-top:0">La fatiga ocurre por la aplicación repetida de tensiones cíclicas, aun cuando su valor máximo esté muy por debajo de la resistencia a la tracción. Un ciclo queda definido por: <b>σ_max</b> y <b>σ_min</b> (extremos), <b>σ_m=(σ_max+σ_min)/2</b> (media), <b>σ_a=(σ_max−σ_min)/2</b> (amplitud) y <b>R=σ_min/σ_max</b> (relación de tensiones).</div>
+        <div class="dz-table-wrap"><table>
+          <thead><tr><th>Tipo de ciclo</th><th>Ejemplo</th><th>R</th></tr></thead>
+          <tbody>
+            <tr><td>Alternado puro (reversible)</td><td>σ_max=−σ_min</td><td>R = −1</td></tr>
+            <tr><td>Repetido (un solo sentido)</td><td>σ_min = 0</td><td>R = 0</td></tr>
+            <tr><td>Fluctuante</td><td>σ_max y σ_min &gt; 0, distintos</td><td>0 &lt; R &lt; 1</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- ---- FT 2. CURVA S-N ---- -->
+    <div class="rt-sub-panel" id="rt_panel_ft_sn">
+      <div class="metrics-row">
+        <div class="mcard"><div class="ml">Ciclos a rotura N<button type="button" class="help-btn" onclick="showHelp('ft_nf',event)">?</button></div><div class="mv" id="ft_mNf">—</div><div class="ms">ciclos</div></div>
+        <div class="mcard"><div class="ml">¿Vida infinita?</div><div class="mv" id="ft_mInfinita" style="font-size:13px">—</div><div class="ms"></div></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Curva S-N (Wöhler)</div>
+        <div style="position:relative;height:280px"><canvas id="ft_snChart"></canvas></div>
+        <div class="note" style="margin-top:0">La curva S-N representa la amplitud de tensión cíclica (S) en función del número de ciclos hasta la rotura (N), en escala semi-logarítmica o log-log. Se obtiene ensayando varias probetas a distintas amplitudes de tensión.</div>
+        <div class="note">Los <b>aceros y otras aleaciones BCC</b> suelen mostrar un <b>límite de fatiga (endurance limit)</b>: una amplitud de tensión por debajo de la cual la vida es prácticamente infinita (la curva se vuelve horizontal, típicamente entre 10⁶–10⁷ ciclos). Los <b>metales no ferrosos</b> (aluminio, cobre, muchos FCC) generalmente <b>no</b> presentan ese límite: la curva sigue descendiendo, y se define una <b>resistencia a la fatiga</b> para una vida de referencia (p. ej. 5×10⁸ ciclos) en lugar de un límite verdadero.</div>
+      </div>
+    </div>
+
+    <!-- ---- FT 3. INICIACIÓN Y PROPAGACIÓN ---- -->
+    <div class="rt-sub-panel" id="rt_panel_ft_iniciacion">
+      <div class="chart-card">
+        <div class="chart-title">Anatomía de una superficie de fractura por fatiga</div>
+        <svg id="rt_fatigaSvg" width="100%" height="150" viewBox="0 0 560 150"></svg>
+        <div class="note" style="margin-top:0">La falla por fatiga progresa en tres etapas, y suele dejar una superficie de fractura característica que permite reconocerla a simple vista:</div>
+        <ol style="font-size:12px;color:var(--muted);line-height:1.6;padding-left:18px;margin:4px 0 0">
+          <li><b>Iniciación de la grieta:</b> casi siempre en la superficie, en un concentrador de tensiones (entalla, poro, marca de mecanizado, inclusión). Ahí la tensión local supera la del resto de la pieza.</li>
+          <li><b>Propagación Etapa I:</b> la grieta avanza lentamente a lo largo de planos de deslizamiento cristalográficos, típicamente a ~45° de la tensión aplicada, en una zona muy pequeña.</li>
+          <li><b>Propagación Etapa II:</b> la grieta gira y avanza perpendicular a la tensión principal, dejando <b>marcas de playa</b> (beach marks, visibles a simple vista, asociadas a paradas/reinicios de carga) y <b>estrías</b> (striations, microscópicas, una por cada ciclo de carga).</li>
+          <li><b>Fractura final:</b> cuando la sección remanente ya no soporta la carga, se produce la rotura instantánea (dúctil o frágil según el material), dejando una zona de aspecto rugoso claramente distinta del resto, más lisa, de la superficie de fatiga.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- ---- FT 4. VELOCIDAD DE PROPAGACIÓN ---- -->
+    <div class="rt-sub-panel" id="rt_panel_ft_velocidad">
+      <div class="metrics-row">
+        <div class="mcard"><div class="ml">da/dN<button type="button" class="help-btn" onclick="showHelp('ft_dadn',event)">?</button></div><div class="mv" id="ft_mDadn">—</div><div class="ms">mm/ciclo</div></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Ley de Paris — da/dN vs. ΔK (escala log-log)</div>
+        <div style="position:relative;height:280px"><canvas id="ft_parisChart"></canvas></div>
+        <div class="note" style="margin-top:0">Una vez iniciada, la velocidad de propagación de la grieta por ciclo (da/dN) puede describirse en su tramo estable mediante la <b>ley de Paris</b>: <code>da/dN = C·(ΔK)^m</code>, donde ΔK = K_max − K_min es el rango del factor de intensidad de tensiones durante el ciclo, y C, m son constantes empíricas del material.</div>
+        <div class="note">La curva completa (en escala log-log) muestra 3 regiones: <b>Región I</b> — por debajo de un umbral ΔK_th la grieta prácticamente no propaga; <b>Región II</b> — el régimen de Paris, lineal en escala log-log, donde la mayor parte de la vida de propagación transcurre; <b>Región III</b> — propagación acelerada e inestable a medida que K_max se aproxima a K_IC, terminando en fractura final.</div>
+      </div>
+    </div>
+
+    <!-- ---- FT 5. FACTORES ---- -->
+    <div class="rt-sub-panel" id="rt_panel_ft_factores">
+      <div class="metrics-row">
+        <div class="mcard"><div class="ml">Límite de fatiga corregido S_e</div><div class="mv" id="ft_mSe">—</div><div class="ms">MPa</div></div>
+        <div class="mcard"><div class="ml">Reducción respecto a S_e'</div><div class="mv" id="ft_mReduccion">—</div><div class="ms">%</div></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Factores de corrección del límite de fatiga</div>
+        <div style="position:relative;height:260px"><canvas id="ft_factoresChart"></canvas></div>
+        <div class="note" style="margin-top:0">El límite de fatiga medido en una probeta pulida de laboratorio (S_e') rara vez se traslada directamente a una pieza real. Se aplican factores de corrección empíricos (método de Marin): <code>S_e = k_a·k_b·k_c·k_d·k_e·S_e'</code></div>
+        <div class="dz-table-wrap"><table>
+          <thead><tr><th>Factor</th><th>Qué representa</th></tr></thead>
+          <tbody>
+            <tr><td>k_a — Acabado superficial</td><td>Rugosidad de la superficie: las marcas de mecanizado actúan como concentradores de tensión y nuclean grietas antes.</td></tr>
+            <tr><td>k_b — Tamaño</td><td>Piezas más grandes tienen más volumen expuesto a tensión alta → mayor probabilidad de un defecto crítico.</td></tr>
+            <tr><td>k_c — Tipo de carga</td><td>Flexión, axial o torsión distribuyen la tensión de forma distinta en la sección.</td></tr>
+            <tr><td>k_d — Temperatura</td><td>A alta temperatura el material pierde resistencia; a muy baja, puede fragilizarse.</td></tr>
+            <tr><td>k_e — Confiabilidad</td><td>Margen estadístico para asegurar que un % dado de piezas supere la vida esperada.</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- ---- FT 6. INFLUENCIA DEL MEDIO ---- -->
+    <div class="rt-sub-panel" id="rt_panel_ft_medio">
+      <div class="chart-card">
+        <div class="chart-title">Influencia del medio ambiente sobre la fatiga</div>
+        <div class="dz-table-wrap"><table>
+          <thead><tr><th>Fenómeno</th><th>Descripción</th></tr></thead>
+          <tbody>
+            <tr><td><b>Fatiga por corrosión</b></td><td>La acción simultánea de un medio corrosivo y tensiones cíclicas reduce fuertemente la vida a fatiga. El picado por corrosión (pitting) actúa como concentrador de tensiones que acelera la iniciación de grietas. En muchos casos, el límite de fatiga desaparece por completo: cualquier tensión cíclica, sostenida el tiempo suficiente, termina en rotura.</td></tr>
+            <tr><td><b>Fatiga por fricción (fretting fatigue)</b></td><td>Ocurre en uniones donde dos superficies en contacto sufren micro-deslizamientos repetidos (pernos, chavetas, acoples a presión). La fricción genera desgaste local y concentración de tensiones que nuclean grietas mucho antes que en fatiga convencional.</td></tr>
+            <tr><td><b>Fragilización por hidrógeno</b></td><td>En ciertos aceros de alta resistencia, el hidrógeno absorbido (por ejemplo durante procesos de recubrimiento electrolítico o en servicio en ambientes con H₂S) puede acelerar drásticamente la propagación de grietas por fatiga.</td></tr>
+            <tr><td><b>Alta temperatura</b></td><td>Además de reducir la resistencia mecánica, favorece la interacción entre fatiga y fluencia (fatiga-fluencia combinada), típica en álabes de turbina y componentes de motores.</td></tr>
+          </tbody>
+        </table></div>
+        <div class="note">En diseño, cuando el componente va a operar en un medio agresivo, es práctica común aplicar un factor de reducción adicional sobre el límite de fatiga (o sencillamente asumir que no existe límite de fatiga verdadero) en lugar de extrapolar los datos obtenidos en aire seco de laboratorio.</div>
+      </div>
+    </div>
+
+    <!-- ---- FL (placeholders) ---- -->
+    <!-- ---- FL 1. COMPORTAMIENTO BAJO FLUENCIA ---- -->
+    <div class="rt-sub-panel" id="rt_panel_fl_comportamiento">
+      <div class="metrics-row">
+        <div class="mcard"><div class="ml">Vel. de fluencia secundaria ε̇_s</div><div class="mv" id="fl_mEpsS1">—</div><div class="ms">1/h</div></div>
+        <div class="mcard"><div class="ml">Tiempo estimado a rotura t_r</div><div class="mv" id="fl_mTr1">—</div><div class="ms">horas</div></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Curva de fluencia — deformación vs. tiempo</div>
+        <div style="position:relative;height:280px"><canvas id="fl_creepChart"></canvas></div>
+        <div class="note" style="margin-top:0">Bajo tensión constante y temperatura elevada (típicamente T &gt; 0.4·T_fusión), los materiales se deforman lentamente y de forma continua con el tiempo, aun con tensiones muy por debajo del límite elástico. La curva deformación-tiempo muestra 3 etapas:</div>
+        <div class="dz-table-wrap"><table>
+          <thead><tr><th>Etapa</th><th>Nombre</th><th>Comportamiento</th></tr></thead>
+          <tbody>
+            <tr><td>I</td><td>Fluencia primaria (transitoria)</td><td>Velocidad de deformación alta al inicio, decreciente — el material se endurece por deformación.</td></tr>
+            <tr><td>II</td><td>Fluencia secundaria (estacionaria)</td><td>Velocidad de deformación aproximadamente constante (ε̇_s) — equilibrio entre endurecimiento y recuperación/ablandamiento térmico. Es la etapa más larga y la más usada en diseño.</td></tr>
+            <tr><td>III</td><td>Fluencia terciaria</td><td>La velocidad se acelera (estricción, formación de microcavidades/microgrietas internas) hasta la rotura final por fluencia.</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- ---- FL 2. INFLUENCIA DE TENSIÓN Y TEMPERATURA ---- -->
+    <div class="rt-sub-panel" id="rt_panel_fl_tension_temp">
+      <div class="metrics-row">
+        <div class="mcard"><div class="ml">Vel. de fluencia secundaria ε̇_s</div><div class="mv" id="fl_mEpsS2">—</div><div class="ms">1/h</div></div>
+        <div class="mcard"><div class="ml">Exponente de tensión n</div><div class="mv" id="fl_mN">—</div><div class="ms"></div></div>
+        <div class="mcard"><div class="ml">Si σ se duplica, ε̇_s se multiplica por</div><div class="mv" id="fl_mFactorSigma">—</div><div class="ms">≈2ⁿ</div></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Gráfico de Arrhenius — ln(ε̇_s) vs. 1/T</div>
+        <div style="position:relative;height:260px"><canvas id="fl_arrheniusChart"></canvas></div>
+        <div class="note" style="margin-top:0">La velocidad de fluencia secundaria depende de la tensión y la temperatura según la ecuación de Dorn (ley de potencia con activación térmica): <code>ε̇_s = K·σⁿ·exp(−Q_c/(R·T))</code>, donde n es el exponente de tensión (típicamente 3-8), Q_c la energía de activación para la fluencia y T la temperatura absoluta.</div>
+        <div class="note">La dependencia con la temperatura es exponencial (tipo Arrhenius): pequeños incrementos de T producen aumentos muy grandes en la velocidad de fluencia — por eso el control de la temperatura de servicio es tan crítico en componentes que trabajan en caliente (álabes de turbina, tuberías de vapor, etc.).</div>
+      </div>
+    </div>
+
+    <!-- ---- FL 3. MÉTODOS DE EXTRAPOLACIÓN ---- -->
+    <div class="rt-sub-panel" id="rt_panel_fl_extrapolacion">
+      <div class="metrics-row">
+        <div class="mcard"><div class="ml">Parámetro de Larson-Miller</div><div class="mv" id="fl_mLMP">—</div><div class="ms">P = T(C+log t_r)</div></div>
+        <div class="mcard"><div class="ml">Vida estimada a T de servicio</div><div class="mv" id="fl_mTrServ">—</div><div class="ms">horas</div></div>
+        <div class="mcard"><div class="ml">Vida estimada</div><div class="mv" id="fl_mTrServAnios">—</div><div class="ms">años</div></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Parámetro de Larson-Miller — vida estimada vs. temperatura de servicio</div>
+        <div style="position:relative;height:260px"><canvas id="fl_lmChart"></canvas></div>
+        <div class="note" style="margin-top:0">Los ensayos de fluencia hasta rotura a la temperatura y tensión de servicio real pueden tardar años. Para evitar esto, se ensaya a mayor temperatura/tensión (rotura en horas o días) y se extrapola mediante parámetros como el de <b>Larson-Miller</b>: <code>P = T·(C + log₁₀ t_r)</code>, donde T es la temperatura absoluta (K), t_r el tiempo a rotura (h) y C una constante del material (≈20 para muchos aceros y aleaciones).</div>
+        <div class="note">Para una misma tensión, distintas combinaciones de T y t_r que dan el mismo valor de P se consideran equivalentes: eso permite estimar la vida a la temperatura de servicio real a partir de un ensayo acelerado a mayor temperatura, sin tener que esperar años.</div>
+      </div>
+    </div>
+
+    <!-- ---- FL 4. ALEACIONES PARA T ELEVADAS ---- -->
+    <div class="rt-sub-panel" id="rt_panel_fl_aleaciones">
+      <div class="chart-card">
+        <div class="chart-title">Aleaciones para utilización a temperaturas elevadas</div>
+        <div class="dz-table-wrap"><table>
+          <thead><tr><th>Familia</th><th>T máx. de servicio aprox.</th><th>Aplicaciones típicas</th></tr></thead>
+          <tbody>
+            <tr><td>Aceros al carbono y de baja aleación</td><td>~450–550 °C</td><td>Tuberías y calderas de baja/media presión</td></tr>
+            <tr><td>Aceros inoxidables austeníticos (304, 316, 310)</td><td>~600–850 °C</td><td>Intercambiadores de calor, tuberías de vapor, hornos</td></tr>
+            <tr><td>Superaleaciones base níquel (Inconel, Hastelloy)</td><td>~950–1100 °C</td><td>Álabes y discos de turbinas de gas y aeronáuticas, cámaras de combustión</td></tr>
+            <tr><td>Superaleaciones base cobalto</td><td>~900–1000 °C</td><td>Álabes fijos de turbina, componentes resistentes al desgaste en caliente</td></tr>
+            <tr><td>Metales refractarios (W, Mo, Ta, Nb)</td><td>&gt;1200 °C</td><td>Componentes de cohetes, hornos de muy alta temperatura, filamentos</td></tr>
+            <tr><td>Cerámicas estructurales (SiC, Si₃N₄)</td><td>&gt;1300 °C</td><td>Componentes de turbina experimental, recubrimientos de barrera térmica</td></tr>
+          </tbody>
+        </table></div>
+        <div class="note">En general, mayor resistencia a la fluencia se logra con: puntos de fusión altos, estructuras cristalinas de alta energía de falla de apilamiento, tamaño de grano grande (menos bordes de grano donde puede ocurrir deslizamiento) o incluso <b>monocristales</b> (sin bordes de grano en absoluto, como en los álabes de turbina de aviación de última generación), endurecimiento por precipitación (fases γ' en superaleaciones de Ni) y adición de elementos que retrasan la difusión a alta temperatura.</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+
+<!-- TEST PANEL -->
+<div class="test-panel" id="testPanel" style="display:none">
+  <div class="test-panel-hdr" onclick="toggleTestPanel()">
+    <h3>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+      Suite de Testeo
+      <span class="tp-badge" id="tpBadge">—</span>
+    </h3>
+    <span id="tpToggleIcon" style="font-size:14px;color:var(--muted)">▼</span>
+  </div>
+  <div class="test-panel-body" id="testPanelBody">
+    <div class="test-summary" id="testSummary"></div>
+    <div style="margin-bottom:10px">
+      <button class="test-run-btn" onclick="runAllTests()">▶ Ejecutar todos los tests</button>
+      <button class="test-clear-btn" onclick="clearTestLog()">Limpiar log</button>
+    </div>
+    <div class="test-grid" id="testGrid"></div>
+    <div class="test-log" id="testLog">Presioná "Ejecutar todos los tests" para comenzar...</div>
+  </div>
+</div>
+
+<!-- ================================================================ MODAL: FICHA TÉCNICA -->
+<div class="modal-bg" id="fichaModal" style="display:none" onclick="if(event.target===this)closeFicha()">
+  <div class="modal">
+    <div class="modal-hdr">
+      <h2>Ficha técnica del ensayo</h2>
+      <button class="modal-close no-print" onclick="closeFicha()">×</button>
+    </div>
+    <div class="modal-body" id="fichaBody"></div>
+  </div>
+</div>
+<script src="assets/data-presets.js"></script>
+<script src="assets/traccion.js"></script>
+<script src="assets/export.js"></script>
+<script src="assets/compresion.js"></script>
+<script src="assets/comparar.js"></script>
+<script src="assets/temperatura.js"></script>
+<script src="assets/compuesto.js"></script>
+<script src="assets/configs.js"></script>
+<script src="assets/dureza-shared.js"></script>
+<script src="assets/dureza-mohs.js"></script>
+<script src="assets/dureza-rockwell.js"></script>
+<script src="assets/dureza-brinell.js"></script>
+<script src="assets/dureza-vickers.js"></script>
+<script src="assets/dureza-janka.js"></script>
+<script src="assets/dureza-esclerometro.js"></script>
+<script src="assets/dureza-init.js"></script>
+<script src="assets/rotura-shared.js"></script>
+<script src="assets/fractura.js"></script>
+<script src="assets/fatiga.js"></script>
+<script src="assets/fluencia.js"></script>
+<script src="assets/ficha.js"></script>
+<script src="assets/app.js"></script>
+
+<div class="help-overlay" id="helpOverlay" onclick="closeHelp(event)">
+  <div class="help-box" onclick="event.stopPropagation()">
+    <div class="help-box-hdr"><span id="helpTitle"></span><button type="button" class="help-close" onclick="closeHelp()">✕</button></div>
+    <div class="help-box-body" id="helpBody"></div>
+  </div>
+</div>
+<script src="assets/help-data.js"></script>
+</body>
+</html>
