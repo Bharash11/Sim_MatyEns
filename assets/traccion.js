@@ -691,7 +691,7 @@ function showFicha() {
   <div class="ficha-header">
     <div>
       <div class="ficha-title">Informe de Ensayo de Tracción</div>
-      <div class="ficha-meta">Fecha: ${now} — Simulador de Ensayos Mecánicos v3.11</div>
+      <div class="ficha-meta">Fecha: ${now} — Simulador de Ensayos Mecánicos v3.17</div>
     </div>
     <div style="text-align:right">
       <div class="ficha-badge ${frag?'badge-fragil':'badge-ductil'}">${frag?'MATERIAL FRÁGIL':'MATERIAL DÚCTIL'}</div>

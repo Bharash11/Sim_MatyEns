@@ -6,6 +6,10 @@ function switchTab(name, el){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('tab-'+name).classList.add('active');
   if(el) el.classList.add('active');
+  // FIX (Fase 10): registrar la pestaña activa para "retomar donde dejó" en
+  // la próxima sesión. Guardado, no typeof-guard porque progreso.js siempre
+  // se carga junto con app.js (mismo orden que material-sync.js).
+  if (typeof progRegistrarPestana === 'function') progRegistrarPestana(name);
 }
 
 /* ============================================================ INIT */
@@ -22,6 +26,12 @@ dzInit();
 frInit();
 ftInit();
 flInit();
+// FIX (Fase 10): progInit() va al final del bloque de init para restaurar
+// último material por selector y última pestaña activa DESPUÉS de que todos
+// los valores por defecto (applyPreset2, applyPresetComp0, dzInit, etc.) ya
+// se aplicaron -- mismo criterio de orden que ya usaba applyPresetComp0
+// (comentario FIX #2 arriba) para no pisarse con el resto del init.
+progInit();
 
 
 /* ============================================================ RESPONSIVE / DEVICE DETECTION v5 */

@@ -1,18 +1,20 @@
 // dureza-rockwell.js — escala Rockwell (normal y superficial)
 
-const ROCKWELL_REF = {
-  acero:      {scale:'B', hr:70, slider:61},
-  aceroinox:  {scale:'B', hr:80, slider:74},
-  fragil:     {scale:'C', hr:20, slider:16},
-  aluminio:   {scale:'B', hr:60, slider:48},
-  titanio:    {scale:'C', hr:34, slider:31},
-  niquel:     {scale:'B', hr:45, slider:29},
-  molibdeno:  {scale:'B', hr:75, slider:68},
-  magnesio:   {scale:'B', hr:50, slider:36},
-  zinc:       {scale:'B', hr:35, slider:16},
-  tungsteno:  {scale:'C', hr:22, slider:18},
-  laton:      {scale:'B', hr:55, slider:42},
+// FIX (Fase 6a): antes cada entrada tenía su propio {scale, hr, slider}
+// desconectado de PRESETS -- ahora scale/hr salen de PRESETS[x].dureza.hr
+// (misma fuente que Brinell/Vickers usan para hb/hv); slider es específico
+// de ESTE control de UI (posición del dial), así que se queda acá.
+// ROCKWELL_REF se arma combinando ambas, mismo shape {scale,hr,slider} que
+// tenía antes.
+const ROCKWELL_SLIDER = {
+  acero:61, aceroinox:74, fragil:16, aluminio:48, titanio:31,
+  niquel:29, molibdeno:68, magnesio:36, zinc:16, tungsteno:18, laton:42,
 };
+const ROCKWELL_REF = {};
+for (const [key, slider] of Object.entries(ROCKWELL_SLIDER)) {
+  const hr = PRESETS[key]?.dureza?.hr;
+  if (hr) ROCKWELL_REF[key] = { scale: hr.scale, hr: hr.value, slider };
+}
 function dzApplyRockwellMaterial(){
   const key = document.getElementById('dz_rkMat').value;
   const ref = ROCKWELL_REF[key];

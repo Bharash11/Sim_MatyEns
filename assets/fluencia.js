@@ -163,11 +163,45 @@ function flLarsonMillerTr(LMP, T_K, C){
 
 function flUpdateExtrapolacion(){
   const C = parseFloat(document.getElementById('fl_lmC').value)||20;
-  const Ttest = parseFloat(document.getElementById('fl_ttest').value)||0;
-  const trTest = parseFloat(document.getElementById('fl_trtest').value)||1;
+  const TtestRaw = parseFloat(document.getElementById('fl_ttest').value);
+  const trTestRaw = parseFloat(document.getElementById('fl_trtest').value);
   const Tserv = parseFloat(document.getElementById('fl_tserv').value)||0;
   document.getElementById('fl_tservVal').textContent = Tserv+' °C';
 
+  // FIX #37: dos problemas del mismo origen (campos de texto libre sin
+  // validar) en Larson-Miller:
+  //  1) un tiempo a rotura del ensayo <= 0 (o vacío) hace log10(<=0) = NaN o
+  //     -Infinity, que se propaga a LMP y a la vida en servicio -- se
+  //     mostraba literalmente "NaN" en pantalla.
+  //  2) una temperatura de ensayo tipeada por debajo del cero absoluto
+  //     (-273.15°C) no tenía ningún clamp, a diferencia del mismo problema ya
+  //     resuelto en el módulo "Efecto temperatura" (ver clampT en
+  //     temperatura.js) -- daba un resultado "válido" en apariencia pero
+  //     calculado con Kelvin negativos, físicamente imposible.
+  // Se aplica el mismo clamp ya usado en temperatura.js y se valida trTest
+  // antes de calcular, en vez de dejar que el NaN llegue a pantalla.
+  const warnEl = document.getElementById('fl_lmWarn');
+  const validTrTest = isFinite(trTestRaw) && trTestRaw>0;
+  const Ttest = Math.max(-273.15, isFinite(TtestRaw)?TtestRaw:0);
+  const clampeoAplicado = isFinite(TtestRaw) && TtestRaw < -273.15;
+
+  if(!validTrTest){
+    document.getElementById('fl_mLMP').textContent = '—';
+    document.getElementById('fl_mTrServ').textContent = '—';
+    document.getElementById('fl_mTrServAnios').textContent = '—';
+    warnEl.style.display = 'block';
+    warnEl.innerHTML = 'El tiempo a rotura del ensayo de referencia debe ser un número positivo mayor que cero.';
+    if(flLmChartInst){
+      flLmChartInst.data.datasets[0].data = [];
+      flLmChartInst.data.datasets[1].data = [];
+      flLmChartInst.update();
+    }
+    return;
+  }
+  warnEl.style.display = clampeoAplicado ? 'block' : 'none';
+  if(clampeoAplicado) warnEl.innerHTML = `La temperatura de ensayo no puede estar por debajo del cero absoluto (-273.15°C) -- se usó -273.15°C para el cálculo.`;
+
+  const trTest = trTestRaw;
   const Ttest_K = Ttest+273.15;
   const LMP = flLarsonMillerP(Ttest_K, C, trTest);
 

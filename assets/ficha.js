@@ -39,6 +39,24 @@ const FICHA_CREEP_EJEMPLO = {
   tungsteno: {sigma:50, t:1800},
 };
 
+// FIX (Fase 8, punto 1): FT_SN_PRESETS (fatiga.js) vive separado de PRESETS
+// a propósito -- tiene claves de GRADO específico ("acero1045", "acero4340",
+// "al2014"), no genéricas como PRESETS ("acero", "aluminio"), y ya se había
+// excluido a mano de la sincronización cruzada de material (ver
+// MATERIAL_SYNC_TARGETS en material-sync.js, Fase 7) por ese mismo motivo.
+// En vez de forzar esos datos dentro de PRESETS[x].frac (lo que perdería la
+// distinción entre grados -- 1045 y 4340 tienen pendientes de Basquin bien
+// distintas) o de duplicar sus valores acá, este mapeo liviano conecta cada
+// material de PRESETS con el grado de FT_SN_PRESETS más representativo,
+// SOLO para mostrarlo como referencia rotulada en la ficha -- no como si
+// fuera un ensayo propio de ese material genérico. No se mapean los
+// materiales sin un grado representativo real en FT_SN_PRESETS.
+const FICHA_SN_REF = { acero:'acero1045', aceroinox:'acero4340', aluminio:'al2014' };
+// σ_a de referencia para el resumen de vida a fatiga: mismo valor que trae
+// por defecto el slider ft_sa en la pestaña interactiva (fatiga.js), para no
+// inventar una condición de carga nueva solo para la ficha.
+const FICHA_SN_SA_EJEMPLO = 200;
+
 function openFichaPicker(){
   const opts = Object.keys(PRESETS).map(k => `<option value="${k}">${MATERIAL_LABELS[k]||k}</option>`).join('');
   document.getElementById('fichaBody').innerHTML = `
@@ -58,6 +76,9 @@ function openFichaPicker(){
 function renderFichaMaterial(){
   const key = document.getElementById('fichaMatSelect').value;
   if(!key) return;
+  // FIX (Fase 10): registrar en el progreso local que se generó una ficha
+  // para este material, si el módulo de progreso está cargado.
+  if (typeof progRegistrar === 'function') progRegistrar('ficha', { material: key });
   const p = PRESETS[key];
   const nombre = MATERIAL_LABELS[key] || key;
   const now = new Date().toLocaleString('es-AR');
@@ -69,6 +90,12 @@ function renderFichaMaterial(){
   const ten = calcTenacity(pts);
 
   // Dureza estimada — misma correlación TS≈3.45·HB validada en tests.js (dz_ts_correlation).
+  // FIX (Fase 6b): con la unificación de Dureza (Fase 6a), varios materiales
+  // ahora tienen un HB real en PRESETS[x].dureza -- se usa ese en vez de
+  // estimarlo por correlación cuando existe, igual que hicimos con K_IC/Paris/
+  // creep en la Fase 1 (dato real > estimación, cuando el dato real existe).
+  const durezaReal = p.dureza;
+  const hbReal = durezaReal?.hb;
   const hbEst = p.ts/3.45;
 
   // FIX (Fase 5c): la pestaña Compresión SÍ puede tener σ_yc/σ_c cargados a
@@ -88,15 +115,57 @@ function renderFichaMaterial(){
     };
   }
 
+  // FIX (Fase 7b — extender la lectura cruzada de la Fase 5c a Dureza): la
+  // Fase 5c ya lee Compresión en vivo si el material coincide (ver
+  // `tieneCompresion` arriba). Mismo criterio acá para Rockwell/Brinell/
+  // Vickers: si el <select> de ESE subensayo tiene cargado el mismo
+  // material que la ficha, se lee el resultado que el simulador YA
+  // calculó y mostró en pantalla para ese ensayo puntual (el texto de
+  // dz_rkNumber/dz_brResult/dz_vResult), en vez de reinventar la fórmula acá.
+  // Se lee el texto ya renderizado -- no se recalcula con otra copia de la
+  // fórmula -- para que si el alumno movió el slider/carga/diámetro
+  // respecto del ensayo guiado, la ficha muestre EXACTAMENTE lo que el
+  // alumno tiene en pantalla en ese momento, no una reconstrucción aparte
+  // que podría desincronizarse de dureza-rockwell.js/brinell.js/vickers.js.
+  // Puede coincidir en unos subensayos y no en otros (ej. "Oro" está en
+  // Brinell/Vickers pero no en Rockwell, ver dureza-rockwell.js) -- por
+  // eso los 3 se chequean por separado, no como un solo "tieneDureza".
+  function fichaMedidoDureza(selectId, resultId, regex) {
+    const selEl = document.getElementById(selectId);
+    if (!selEl || selEl.value !== key) return null; // otro material cargado ahí, o sin selector en el DOM
+    const resEl = document.getElementById(resultId);
+    if (!resEl) return null;
+    const m = resEl.textContent.match(regex);
+    return m ? m[1] : null; // null también cuando el resultado en pantalla es "—" (ensayo sin completar)
+  }
+  const rkMedido = fichaMedidoDureza('dz_rkMat', 'dz_rkNumber', /^(\d+(?:\.\d+)?\s*HR\w+)/);
+  const brMedido = fichaMedidoDureza('dz_brMat', 'dz_brResult', /^(\d+(?:\.\d+)?)\s*HB/);
+  const vMedido  = fichaMedidoDureza('dz_vMat',  'dz_vResult',  /^(\d+(?:\.\d+)?)\s*HV/);
+  const tieneDurezaMedida = !!(rkMedido || brMedido || vMedido);
+
   const frac = p.frac || {};
   const tieneKic = frac.kic !== undefined;
   const tieneParis = frac.parisC !== undefined;
   const tieneCreep = frac.K !== undefined;
   const ejCreep = FICHA_CREEP_EJEMPLO[key] || {sigma:100, t:500};
+
+  // FIX (Fase 8, punto 1): resumen de vida a fatiga por S-N/Basquin, al lado
+  // del resumen de Paris ya existente. Solo para los materiales mapeados en
+  // FICHA_SN_REF (ver comentario junto a esa constante) -- para el resto, no
+  // se muestra nada acá, igual que kic/paris/creep no se muestran cuando no
+  // hay dato real. Se etiqueta explícitamente con el grado de referencia
+  // (ej. "Acero 1045") para que quede claro que es una curva de referencia
+  // de ESE grado, no un ensayo propio del acero genérico de esta ficha.
+  const snGrado = FICHA_SN_REF[key];
+  const snRef = snGrado ? FT_SN_PRESETS[snGrado] : null;
+  const tieneSn = !!snRef;
+  const snInfinita = tieneSn && snRef.hasLimit && FICHA_SN_SA_EJEMPLO <= snRef.Se;
+  const snNf = tieneSn && !snInfinita ? ftBasquinN(FICHA_SN_SA_EJEMPLO, snRef.sfp, snRef.b) : null;
+
   const faltantes = [!tieneKic&&'K_IC', !tieneParis&&'Ley de Paris', !tieneCreep&&'parámetros de fluencia'].filter(Boolean);
 
   let fractSeccion;
-  if (tieneKic || tieneParis || tieneCreep) {
+  if (tieneKic || tieneParis || tieneCreep || tieneSn) {
     fractSeccion = `
     <div class="ficha-sec ficha-full">
       <h3>Fractura, fatiga y fluencia</h3>
@@ -104,6 +173,12 @@ function renderFichaMaterial(){
       ${tieneParis ? `
       <div class="ficha-row"><span class="fk">Ley de Paris</span><span class="fv">C=${frac.parisC.toExponential(2)}, m=${frac.parisM}</span></div>
       <div class="ficha-row"><span class="fk">da/dN a ΔK=15 MPa·√m</span><span class="fv">${ftDadN(15, frac.parisC, frac.parisM).toExponential(2)} mm/ciclo</span></div>` : ''}
+      ${tieneSn ? `
+      <div class="ficha-row"><span class="fk">Curva S-N (Basquin) — referencia</span><span class="fv">${snRef.label}</span></div>
+      <div class="ficha-row"><span class="fk">σ_f' / b</span><span class="fv">${snRef.sfp} MPa / ${snRef.b}</span></div>
+      ${snRef.hasLimit ? `<div class="ficha-row"><span class="fk">Límite de fatiga S_e</span><span class="fv">${snRef.Se} MPa</span></div>` : ''}
+      <div class="ficha-row"><span class="fk">Vida estimada a σ_a=${FICHA_SN_SA_EJEMPLO} MPa</span><span class="fv">${snInfinita ? 'mayor a 10⁷ ciclos (infinita)' : snNf.toExponential(2)+' ciclos'}</span></div>
+      <div class="note" style="margin-top:2px">Curva de referencia para ${snRef.label} — "${nombre}" no tiene datos S-N propios cargados en el simulador.</div>` : ''}
       ${tieneCreep ? `
       <div class="ficha-row"><span class="fk">Parámetros de Dorn</span><span class="fv">K=${frac.K}, n=${frac.n}, Q_c=${frac.Qc} J/mol</span></div>
       <div class="ficha-row"><span class="fk">ε̇_s estimada (${ejCreep.sigma} MPa, ${ejCreep.t} °C)</span><span class="fv">${flEpsDot(frac,ejCreep.sigma,ejCreep.t).toExponential(2)} 1/h</span></div>` : ''}
@@ -158,9 +233,18 @@ function renderFichaMaterial(){
       <div class="note" style="margin-top:0">Sin datos propios de compresión (σ_yc, σ_c) para este material — cargalos manualmente en la pestaña Compresión (con este mismo material seleccionado ahí) y volvé a generar la ficha. No se estiman a partir de tracción porque el comportamiento a compresión no es simétrico, sobre todo en materiales frágiles.</div>`}
     </div>
     <div class="ficha-sec">
-      <h3>Dureza (estimada)</h3>
+      <h3>Dureza${durezaReal ? '' : ' (estimada)'}</h3>
+      ${durezaReal ? `
+      ${durezaReal.hb!==undefined ? `<div class="ficha-row"><span class="fk">HB (Brinell)</span><span class="fv">${durezaReal.hb}</span></div>` : ''}
+      ${durezaReal.hv!==undefined ? `<div class="ficha-row"><span class="fk">HV (Vickers)</span><span class="fv">${durezaReal.hv}</span></div>` : ''}
+      ${durezaReal.hr!==undefined ? `<div class="ficha-row"><span class="fk">HR (Rockwell ${durezaReal.hr.scale})</span><span class="fv">${durezaReal.hr.value}</span></div>` : ''}
+      <div class="note" style="margin-top:6px">Valores de referencia del simulador (no estimados) — mismos usados en la pestaña Ensayo no destructivo.</div>` : `
       <div class="ficha-row"><span class="fk">HB estimado</span><span class="fv">${hbEst.toFixed(0)} *</span></div>
-      <div class="note" style="margin-top:6px">* Correlación TS(MPa)≈3.45·HB — aproximación válida sobre todo para aceros de baja/media aleación. No reemplaza un ensayo de dureza real.</div>
+      <div class="note" style="margin-top:6px">* Correlación TS(MPa)≈3.45·HB — aproximación válida sobre todo para aceros de baja/media aleación. No reemplaza un ensayo de dureza real.</div>`}
+      ${rkMedido ? `<div class="ficha-row"><span class="fk">HR medido en tu ensayo (Rockwell)</span><span class="fv">${rkMedido}</span></div>` : ''}
+      ${brMedido ? `<div class="ficha-row"><span class="fk">HB medido en tu ensayo (Brinell)</span><span class="fv">${brMedido}</span></div>` : ''}
+      ${vMedido  ? `<div class="ficha-row"><span class="fk">HV medido en tu ensayo (Vickers)</span><span class="fv">${vMedido}</span></div>` : ''}
+      ${tieneDurezaMedida ? `<div class="note" style="margin-top:6px">Tomado de lo que tenés cargado ahora mismo en la pestaña Ensayo no destructivo (con este mismo material seleccionado ahí) — puede diferir de la referencia bibliográfica de arriba si moviste el control respecto del ensayo guiado.</div>` : ''}
     </div>
     <div class="ficha-sec ficha-full">
       <h3>Curva σ — ε (tracción)</h3>

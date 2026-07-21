@@ -87,8 +87,41 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 .btn-secondary{width:100%;padding:6px;font-size:12px;background:transparent;
   color:var(--muted);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;transition:background .15s;margin-bottom:5px}
 .btn-secondary:hover{background:var(--surface2);color:var(--text)}
+/* FIX (Fase 7 — sync cruzado de material entre pestañas): botón inline chico,
+   no full-width como .btn-secondary, para que entre junto al <select> de
+   material sin romper el layout de .field existente. */
+.btn-sync{display:inline-flex;align-items:center;gap:5px;width:auto;margin:6px 0 0;
+  padding:5px 10px;font-size:11px;font-weight:600;background:transparent;
+  color:var(--accent);border:1px solid var(--accent);border-radius:var(--radius);
+  cursor:pointer;transition:background .15s,color .15s}
+.btn-sync:hover{background:var(--accent);color:#fff}
+/* Toast de reporte del sync ("aplicado en X, no aplica en Y"). No bloqueante,
+   se autodescarta solo; reusa --surface/--border/--accent existentes en vez
+   de introducir una paleta nueva. */
+.mat-sync-toast{position:fixed;left:50%;bottom:-140px;transform:translateX(-50%);
+  max-width:420px;width:calc(100% - 32px);background:var(--surface);border:1px solid var(--border);
+  border-left:3px solid var(--accent);border-radius:var(--radius);padding:10px 34px 10px 12px;
+  font-size:12px;line-height:1.55;box-shadow:0 6px 24px rgba(0,0,0,.18);z-index:5000;
+  transition:bottom .25s ease}
+.mat-sync-toast.show{bottom:20px}
+.mat-sync-toast-title{font-weight:700;margin-bottom:4px}
+.mat-sync-toast-row{margin-top:2px}
+.mat-sync-toast-row .ok{color:var(--plastic);font-weight:600}
+.mat-sync-toast-row .warn{color:var(--muted);font-weight:600}
+.mat-sync-toast-close{position:absolute;top:6px;right:8px;background:none;border:none;
+  color:var(--muted);cursor:pointer;font-size:13px;line-height:1;padding:2px}
+.mat-sync-toast-close:hover{color:var(--text)}
 .btn-danger{width:100%;padding:6px;font-size:12px;background:transparent;
   color:var(--frac);border:1px solid var(--frac);border-radius:var(--radius);cursor:pointer;transition:background .15s;margin-bottom:5px}
+
+/* PANEL DE PROGRESO (Fase 10) — misma paleta que el resto de la app, sin
+   introducir colores nuevos. */
+.prog-list{max-height:320px;overflow-y:auto;margin-top:10px;border:1px solid var(--border);border-radius:var(--radius)}
+.prog-row{display:flex;gap:8px;align-items:baseline;padding:6px 10px;font-size:12px;border-bottom:1px solid var(--border)}
+.prog-row:last-child{border-bottom:none}
+.prog-hora{color:var(--muted);font-family:var(--mono);flex-shrink:0;font-size:11px}
+.prog-tipo{text-transform:uppercase;font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--accent);flex-shrink:0}
+.prog-detalle{color:var(--text)}
 .btn-danger:hover{background:rgba(196,53,53,.08)}
 .speed-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-bottom:8px}
 .speed-row input[type=range]{flex:1;accent-color:var(--accent)}
@@ -152,12 +185,40 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
    imprimía TODA la página (sidebar, chart principal, etc.), no solo la
    ficha. Ahora solo se ve/imprime #fichaModal; los botones de acción
    (.no-print) se ocultan al imprimir. */
+/* FIX (Fase 8 — corte de columnas al imprimir/exportar PDF): confirmado.
+   No había @page, así que el ancho imprimible real dependía del margen
+   default del navegador (~0.4-0.5in por lado), más angosto que los ~780px
+   del modal en pantalla. .ficha (grid a 2 columnas) y .ficha-row (flex
+   fk/fv sin wrap) estaban ajustados para ese ancho de pantalla, así que al
+   imprimir en una página más angosta el último caracter de valores como
+   "GPa"/"kJ/m³" caía fuera del área imprimible y no se renderizaba (no es
+   overflow:hidden -- no hay ninguno acá -- es contenido que cae fuera de
+   la hoja física). Fix en 3 frentes, para no depender de un solo navegador:
+   1) @page fija un margen conocido en vez del default del navegador.
+   2) .ficha pasa a 1 columna al imprimir (mismo criterio que el breakpoint
+      móvil de abajo): cada fila usa el ancho completo de la hoja.
+   3) .ficha-row permite wrap como red de seguridad adicional. */
+/* FIX (v3.17): el punto 2) de arriba nunca tuvo efecto en la práctica -- esta
+   regla y la base ".ficha{grid-template-columns:1fr 1fr}" (más abajo) tienen
+   la MISMA especificidad (un solo selector de clase), y esta quedaba escrita
+   ANTES que la base en el archivo. En un empate de especificidad, CSS
+   resuelve por orden de aparición: la que viene después gana, incluso
+   durante una impresión real -- así que las 2 columnas de pantalla se
+   imprimían igual, pese a que el comentario de arriba dice que ya estaba
+   resuelto. Se sube la especificidad calificando el selector con
+   "#fichaModal" en vez de simplemente reordenar el archivo, para que el fix
+   no dependa de mantener este bloque después de la regla base ante futuros
+   cambios. */
+@page{ margin:12mm; }
 @media print{
   body *{visibility:hidden}
   #fichaModal, #fichaModal *{visibility:visible}
   #fichaModal{position:absolute;inset:0;background:#fff;padding:0;display:block!important}
   #fichaModal .modal{box-shadow:none;max-width:100%;max-height:none;border-radius:0;margin:0}
   .no-print{display:none!important}
+  #fichaModal .ficha{grid-template-columns:1fr}
+  .ficha-row{flex-wrap:wrap;row-gap:2px}
+  .ficha-row .fv{text-align:right}
 }
 
 /* FICHA TECNICA */

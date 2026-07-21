@@ -8,10 +8,34 @@ let rtImpactoChartInst = null;
 function frInit(){
   frDrawDuctilSvg();
   frDrawFragilSvg();
+  frSyncKicPresetValues();
   frInitMecaChart();
   frUpdateMecanica();
   frInitImpactoChart();
   frUpdateImpacto();
+}
+
+// FIX (Fase 8 — unificación parcial de rt_kicPreset con PRESETS[x].frac.kic):
+// 4 de las 7 opciones del <select> (acero/aluminio/titanio/cerámica, ver
+// index.html, marcadas con [data-material]) repetían a mano un valor que ya
+// existe en PRESETS[x].frac.kic (Fase 1) -- dos lugares con el mismo dato,
+// sin relación entre sí. Esto sobreescribe el `value` de esas 4 opciones con
+// el valor real de PRESETS al iniciar, así el <option> nunca puede quedar
+// desincronizado si alguien actualiza PRESETS más adelante. Las otras 3
+// opciones (acero de alta resistencia, vidrio, PMMA) no tienen
+// [data-material] a propósito: no son materiales que existan en PRESETS (no
+// tienen tracción/compresión/dureza en el resto del simulador), así que no
+// hay con qué unificarlas sin inventar una entrada de PRESETS solo para este
+// selector -- mismo criterio de "no fabricar datos" que el resto de Fase 1.
+function frSyncKicPresetValues(){
+  const sel = document.getElementById('rt_kicPreset');
+  if(!sel) return;
+  Array.from(sel.options).forEach(opt=>{
+    const mat = opt.dataset.material;
+    if(!mat) return; // opción sin análogo en PRESETS (ver comentario arriba)
+    const kic = PRESETS[mat]?.frac?.kic;
+    if(kic!==undefined) opt.value = kic;
+  });
 }
 
 /* ================================================================ FR2. DIAGRAMA FRACTURA DÚCTIL */
@@ -137,10 +161,45 @@ function frCalcAcMm(kic, Y, sigma){
 }
 
 function frUpdateMecanica(){
-  const kic = parseFloat(document.getElementById('rt_kic').value)||0.01;
-  const sigma = parseFloat(document.getElementById('rt_sigma').value)||1;
-  const a = parseFloat(document.getElementById('rt_a').value)||0.01;
-  const Y = parseFloat(document.getElementById('rt_yfac').value)||1;
+  const kicRaw = parseFloat(document.getElementById('rt_kic').value);
+  const sigmaRaw = parseFloat(document.getElementById('rt_sigma').value);
+  const aRaw = parseFloat(document.getElementById('rt_a').value);
+  const YRaw = parseFloat(document.getElementById('rt_yfac').value);
+
+  // FIX #36: un valor negativo, cero o vacío tipeado a mano en cualquiera de
+  // estos 4 campos (sobre todo la longitud de grieta, que no tiene sentido
+  // físico si es <= 0) hacía que K_I diera NaN (raíz cuadrada de negativo) y
+  // se mostrara literalmente el texto "NaN" en pantalla -- y peor, el
+  // veredicto cae por defecto en "estable" porque "NaN >= kic" es siempre
+  // false en JS, dándole al alumno una falsa sensación de seguridad ante un
+  // dato inválido. Se valida ANTES de calcular, mismo criterio que ya usa
+  // Vickers/Knoop (FIX #25) para este mismo tipo de problema.
+  const validKic = isFinite(kicRaw) && kicRaw>0;
+  const validSigma = isFinite(sigmaRaw) && sigmaRaw>0;
+  const validA = isFinite(aRaw) && aRaw>0;
+  const validY = isFinite(YRaw) && YRaw>0;
+  const warnEl = document.getElementById('rt_mecaWarn');
+
+  if(!validKic || !validSigma || !validA || !validY){
+    document.getElementById('rt_mKi').textContent = '—';
+    document.getElementById('rt_mAc').textContent = '—';
+    document.getElementById('rt_mMargen').textContent = '—';
+    const vEl0 = document.getElementById('rt_mVeredicto');
+    vEl0.textContent = '— Datos incompletos';
+    vEl0.style.color = 'var(--muted)';
+    warnEl.style.display = 'block';
+    warnEl.innerHTML = 'K_IC, σ, a e Y deben ser números positivos mayores que cero (una grieta o una tensión no pueden ser negativas ni cero).';
+    if(rtMecaChartInst){
+      rtMecaChartInst.data.datasets[0].data = [];
+      rtMecaChartInst.data.datasets[1].data = [];
+      rtMecaChartInst.data.datasets[2].data = [];
+      rtMecaChartInst.update();
+    }
+    return;
+  }
+  warnEl.style.display = 'none';
+
+  const kic = kicRaw, sigma = sigmaRaw, a = aRaw, Y = YRaw;
 
   const Ki = frCalcKi(Y, sigma, a);
   const ac_mm = frCalcAcMm(kic, Y, sigma);
@@ -176,10 +235,40 @@ function frSigmoid(T, Elow, Ehigh, Tmid, width){
   return Elow + (Ehigh-Elow)/(1+Math.exp(-(T-Tmid)/width));
 }
 
+// FIX (Fase 8 — evaluación de unificación con PRESETS, punto 3): a
+// diferencia de K_IC (Fase 1) y la ley de Paris, la transición dúctil-frágil
+// de Charpy NO es una propiedad "por material" sino "por familia
+// cristalina" -- de los 23 materiales de PRESETS, la gran mayoría (cerámica,
+// hormigón, madera, nylon, oro, plata, cobre...) no tiene un ensayo Charpy
+// con curva de transición documentado en absoluto, así que forzar un mapeo
+// 1:1 con PRESETS violaría el mismo criterio de "no inventar datos sin
+// respaldo real" que ya se usa en el resto de Fase 1/5a. Se deja categórico
+// y sin acoplamiento funcional a PRESETS. Solo a modo de referencia (sin que
+// el código dependa de esto), los únicos 2 materiales de PRESETS donde la
+// familia cristalina de acá es inequívoca: "acero" ≈ bajoC (BCC, con
+// transición marcada) y "aceroinox" ≈ fcc (austenítico, sin transición
+// marcada) -- el resto de PRESETS no encaja limpiamente en ninguna de las 4
+// categorías de abajo (bajoCFino tampoco: PRESETS no distingue tamaño de
+// grano de un mismo material).
+//
+// FIX (Fase 9 — 4ta categoría, grano fino vs grueso): se evaluó sumar un
+// polímero (nylon, ya existe en PRESETS) como 4ta familia, pero el Charpy de
+// polímeros (ISO 179) usa otra geometría de probeta y reporta en kJ/m², no
+// en Joules como el Charpy metálico (ISO/ASTM V-notch) de este gráfico
+// (eje 0-170 J) -- mezclarlos en el mismo eje no tendría sentido físico.
+// Se optó en cambio por separar el acero de bajo carbono en grano fino vs
+// grueso: mismo tipo de ensayo, misma probeta, mismas unidades, y es un
+// efecto real y bien documentado (Hall-Petch): a menor tamaño de grano,
+// menor DBTT, mayor energía de meseta superior y transición algo más
+// abrupta (más límites de grano frenando la propagación de la fisura).
+// Los valores de bajoCFino son ilustrativos con ese criterio direccional,
+// igual que los 3 sets originales (ninguno de los 4 es una curva digitalizada
+// de un ensayo real puntual, son aproximaciones pedagógicas del efecto).
 const FR_IMPACTO_PRESETS = {
-  bajoC:  {label:'Acero al carbono (BCC)',        Elow:5,   Ehigh:120, Tmid:20,  width:15, hasDBTT:true},
-  aleado: {label:'Acero aleado de baja aleación (BCC)', Elow:10, Ehigh:150, Tmid:-20, width:20, hasDBTT:true},
-  fcc:    {label:'Aluminio / inox. austenítico (FCC)', Elow:125, Ehigh:135, Tmid:0,  width:50, hasDBTT:false}
+  bajoC:     {label:'Acero al carbono, grano grueso (BCC)', Elow:5,  Ehigh:120, Tmid:20,  width:15, hasDBTT:true},
+  bajoCFino: {label:'Acero al carbono, grano fino (BCC)',   Elow:8,  Ehigh:135, Tmid:-15, width:12, hasDBTT:true},
+  aleado:    {label:'Acero aleado de baja aleación (BCC)',  Elow:10, Ehigh:150, Tmid:-20, width:20, hasDBTT:true},
+  fcc:       {label:'Aluminio / inox. austenítico (FCC)',   Elow:125,Ehigh:135, Tmid:0,   width:50, hasDBTT:false}
 };
 
 function frInitImpactoChart(){

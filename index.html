@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- v3.1: agregado tab "Fractura, fatiga y fluencia" completo (Fractura, Fatiga y Fluencia en caliente con todos sus subtemas) -->
-<title>Simulador de Ensayos Mecánicos 3.11 — Materiales y Ensayos</title>
+<title>Simulador de Ensayos Mecánicos 3.17 — Materiales y Ensayos</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link rel="stylesheet" href="assets/styles.css">
 </head>
@@ -13,9 +13,10 @@
 
 <header>
   <h1>Simulador de Ensayos</h1>
-  <span class="ver" id="verBadge" onclick="handleVerBadgeClick()" style="cursor:default;user-select:none">3.11</span>
+  <span class="ver" id="verBadge" onclick="handleVerBadgeClick()" style="cursor:default;user-select:none">3.17</span>
   <span class="subtitle">Materiales y Ensayos</span>
   <button id="fichaHeaderBtn" onclick="openFichaPicker()" style="background:var(--accent);color:#fff;border:none;border-radius:var(--radius);padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;margin-left:auto">📋 Ficha técnica</button>
+  <button id="progresoHeaderBtn" onclick="abrirProgreso()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer">📈 Mi progreso</button>
   <button id="testHeaderBtn" onclick="toggleTestPanelFromHeader()" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:3px 9px;font-size:11px;color:var(--muted);cursor:pointer">🧪 Tests</button>
   <span class="device-badge" id="deviceBadge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="deviceIcon" style="width:13px;height:13px"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg><span id="deviceLabel">Escritorio</span></span>
 </header>
@@ -104,6 +105,7 @@
             <option value="nylon">Nylon PA6</option>
           </optgroup>
         </select>
+        <button type="button" class="btn-sync" onclick="syncMaterialToAllTests('e_preset')" title="Aplica el material elegido acá también en el resto de las pestañas que lo tengan disponible">🔗 Aplicar a todos los ensayos</button>
       </div>
       <div class="field"><label>Módulo de elasticidad <code>E</code> (GPa)<button type="button" class="help-btn" onclick="showHelp('E',event)">?</button></label>
         <input type="number" id="e_E" value="207" min="1" max="1000" step="1"></div>
@@ -207,6 +209,7 @@
             <option value="nylon">Nylon PA6</option>
           </optgroup>
         </select>
+        <button type="button" class="btn-sync" onclick="syncMaterialToAllTests('co_preset')" title="Aplica el material elegido acá también en el resto de las pestañas que lo tengan disponible">🔗 Aplicar a todos los ensayos</button>
       </div>
       <div class="field"><label>Módulo de elasticidad <code>E</code> (GPa)<button type="button" class="help-btn" onclick="showHelp('E',event)">?</button></label>
         <input type="number" id="co_E" value="207" min="1" max="1000" step="1"></div>
@@ -336,7 +339,7 @@
     <div class="sec">
       <div class="sec-title">Material base (25 °C)</div>
       <div class="field"><label>Preset<button type="button" class="help-btn" onclick="showHelp('preset',event)">?</button></label>
-        <select onchange="applyPreset('t',this.value)">
+        <select id="t_preset" onchange="applyPreset('t',this.value)">
           <optgroup label="Aceros y aleaciones">
             <option value="acero" selected>Acero estructural A36</option>
             <option value="aceroinox">Acero Inoxidable 304</option>
@@ -369,6 +372,7 @@
             <option value="nylon">Nylon PA6</option>
           </optgroup>
         </select>
+        <button type="button" class="btn-sync" onclick="syncMaterialToAllTests('t_preset')" title="Aplica el material elegido acá también en el resto de las pestañas que lo tengan disponible">🔗 Aplicar a todos los ensayos</button>
       </div>
       <div class="field"><label>E a 25°C (GPa)<button type="button" class="help-btn" onclick="showHelp('E',event)">?</button></label><input type="number" id="t_E" value="207" min="1" max="1000" step="1"></div>
       <div class="field"><label>σ_y a 25°C (MPa)<button type="button" class="help-btn" onclick="showHelp('sy',event)">?</button></label><input type="number" id="t_sy" value="250" min="1" max="3000" step="1"></div>
@@ -737,6 +741,7 @@
           <option value="tungsteno">Tungsteno (HRC)</option>
           <option value="laton">Latón (HRB)</option>
         </select>
+        <button type="button" class="btn-sync" onclick="syncMaterialToAllTests('dz_rkMat')" title="Aplica el material elegido acá también en el resto de las pestañas que lo tengan disponible">🔗 Aplicar a todos los ensayos</button>
       </div>
       <div class="field"><label>Tipo de ensayo</label>
         <select id="dz_rkType" onchange="document.getElementById('dz_rkMat').value=''; dzRenderRkTable()">
@@ -773,6 +778,7 @@
           <option value="plata">Plata</option>
           <option value="oro">Oro</option>
         </select>
+        <button type="button" class="btn-sync" onclick="syncMaterialToAllTests('dz_brMat')" title="Aplica el material elegido acá también en el resto de las pestañas que lo tengan disponible">🔗 Aplicar a todos los ensayos</button>
       </div>
       <div class="field"><label>Carga P (kg)</label>
         <select id="dz_brP" onchange="dzUpdateBrinell()">
@@ -808,6 +814,7 @@
           <option value="plata">Plata</option>
           <option value="oro">Oro</option>
         </select>
+        <button type="button" class="btn-sync" onclick="syncMaterialToAllTests('dz_vMat')" title="Aplica el material elegido acá también en el resto de las pestañas que lo tengan disponible">🔗 Aplicar a todos los ensayos</button>
       </div>
       <div class="field"><label>Carga P (gf)</label><input type="number" id="dz_vP" value="100" min="1" oninput="dzUpdateMicro()"></div>
       <div class="field"><label>Diagonal promedio d₁ (mm)</label><input type="number" id="dz_vD" value="0.03" step="0.01" min="0.01" oninput="dzUpdateMicro()"></div>
@@ -839,6 +846,7 @@
         <input type="range" id="dz_tsSlider" min="50" max="500" value="200" oninput="dzUpdateTS()">
       </div>
       <div class="note">TS(psi) = 500·HB &nbsp;·&nbsp; TS(MPa) = 3,45·HB — válido para aceros.</div>
+      <button class="btn-secondary" onclick="exportTsChart()">⬇ Exportar imagen</button>
     </div>
 
     <!-- 7 JANKA -->
@@ -852,6 +860,7 @@
           <option value="algarrobo">Algarrobo</option>
           <option value="quebracho">Quebracho colorado</option>
         </select>
+        <button type="button" class="btn-sync" onclick="syncMaterialToAllTests('dz_jkMat')" title="Aplica el material elegido acá también en el resto de las pestañas que lo tengan disponible">🔗 Aplicar a todos los ensayos</button>
       </div>
       <div class="field"><label>Fuerza aplicada — <span id="dz_jkVal">200</span> kgf</label>
         <input type="range" id="dz_jkF" min="10" max="2500" step="5" value="200" oninput="dzUpdateJanka()">
@@ -867,6 +876,7 @@
           <option value="">— Sin material (exploración libre) —</option>
           <option value="hormigon">Hormigón (≈25 MPa)</option>
         </select>
+        <button type="button" class="btn-sync" onclick="syncMaterialToAllTests('dz_scMat')" title="Aplica el material elegido acá también en el resto de las pestañas que lo tengan disponible">🔗 Aplicar a todos los ensayos</button>
       </div>
       <div class="field"><label>Orientación del martillo</label>
         <select id="dz_scOrient" onchange="dzUpdateSclero()">
@@ -1067,13 +1077,26 @@
         <select id="rt_kicPreset" onchange="frApplyKicPreset()">
           <option value="">— Personalizado —</option>
           <option value="53">Acero de alta resistencia (≈53 MPa√m)</option>
-          <option value="98">Acero estructural común (≈98 MPa√m)</option>
-          <option value="24">Aluminio 7075-T651 (≈24 MPa√m)</option>
-          <option value="55">Titanio Ti-6Al-4V (≈55 MPa√m)</option>
-          <option value="4.5">Cerámica (Al₂O₃) (≈4.5 MPa√m)</option>
+          <option value="98" data-material="acero">Acero estructural común (≈98 MPa√m)</option>
+          <option value="24" data-material="aluminio">Aluminio 7075-T651 (≈24 MPa√m)</option>
+          <option value="55" data-material="titanio">Titanio Ti-6Al-4V (≈55 MPa√m)</option>
+          <option value="4.5" data-material="ceramica">Cerámica (Al₂O₃) (≈4.5 MPa√m)</option>
           <option value="0.8">Vidrio de sílice (≈0.8 MPa√m)</option>
           <option value="1.2">Polímero (PMMA) (≈1.2 MPa√m)</option>
         </select>
+        <!-- FIX (Fase 8 — unificación parcial de rt_kicPreset): las 4 opciones
+             de arriba con [data-material] duplicaban a mano un valor que ya
+             vive en PRESETS[x].frac.kic (Fase 1) -- riesgo de desincronizarse
+             si alguien actualiza PRESETS y se olvida de este selector. Ahora
+             frSyncKicPresetValues() (fractura.js, corre en frInit) sobreescribe
+             el `value` de esas 4 opciones con PRESETS[x].frac.kic al cargar, así
+             que el número mostrado siempre sigue a la fuente única de verdad.
+             Las otras 3 ("acero de alta resistencia", vidrio, PMMA) quedan
+             sueltas a propósito: no son materiales con tracción/compresión/
+             dureza en el resto del simulador, así que no hay PRESETS[x] con el
+             que unificarlas -- inventar una entrada de PRESETS solo para esto
+             infringiría el mismo criterio de "no fabricar datos" que ya se usa
+             en el resto de PRESETS.frac. -->
       </div>
       <div class="field"><label>Tenacidad a la fractura <code>K_IC</code> (MPa·√m)<button type="button" class="help-btn" onclick="showHelp('rt_kic',event)">?</button></label>
         <input type="number" id="rt_kic" value="53" min="0.1" max="300" step="0.1" oninput="frUpdateMecanica()"></div>
@@ -1083,13 +1106,15 @@
         <input type="number" id="rt_a" value="2" min="0.01" max="50" step="0.01" oninput="frUpdateMecanica()"></div>
       <div class="field"><label>Factor geométrico <code>Y</code><button type="button" class="help-btn" onclick="showHelp('rt_y',event)">?</button></label>
         <input type="number" id="rt_yfac" value="1.0" min="0.5" max="2.5" step="0.05" oninput="frUpdateMecanica()"></div>
+      <div class="info-bar" id="rt_mecaWarn" style="display:none;margin-top:8px;border-left-color:var(--neck)"></div>
       <button class="btn-secondary" onclick="exportRoturaChart('mecanica_fractura.png')">⬇ Exportar imagen</button>
     </div>
     <div class="sec rt-sub-ctrl" id="rt_ctrl_fr_impacto">
       <div class="sec-title">Ensayo de impacto Charpy</div>
       <div class="field"><label>Material</label>
         <select id="rt_impactoMat" onchange="frUpdateImpacto()">
-          <option value="bajoC">Acero al carbono (BCC) — con transición marcada</option>
+          <option value="bajoC">Acero al carbono, grano grueso (BCC) — con transición marcada</option>
+          <option value="bajoCFino">Acero al carbono, grano fino (BCC) — DBTT más baja (Hall-Petch)</option>
           <option value="aleado">Acero aleado de baja aleación (BCC)</option>
           <option value="fcc">Aluminio / acero inoxidable austenítico (FCC) — sin transición</option>
         </select>
@@ -1143,6 +1168,7 @@
           <option value="titanio">Aleación de titanio (C≈9.0e-12, m≈4.0)</option>
           <option value="custom">— Personalizado —</option>
         </select>
+        <button type="button" class="btn-sync" onclick="syncMaterialToAllTests('ft_parisMat')" title="Aplica el material elegido acá también en el resto de las pestañas que lo tengan disponible">🔗 Aplicar a todos los ensayos</button>
       </div>
       <div class="field"><label><code>C</code> (constante del material)<button type="button" class="help-btn" onclick="showHelp('ft_parisC',event)">?</button></label>
         <input type="number" id="ft_parisC" value="6.9e-12" step="any" oninput="ftUpdateVelocidad()"></div>
@@ -1240,6 +1266,7 @@
       <div class="field"><label>Servicio: temperatura (°C)</label>
         <input type="range" id="fl_tserv" value="600" min="200" max="1300" step="5" oninput="flUpdateExtrapolacion()">
         <div class="note" style="margin-top:2px" id="fl_tservVal">600 °C</div></div>
+      <div class="info-bar" id="fl_lmWarn" style="display:none;margin-top:8px;border-left-color:var(--neck)"></div>
       <button class="btn-secondary" onclick="exportRoturaChart('larson_miller.png')">⬇ Exportar imagen</button>
     </div>
 
@@ -1581,6 +1608,17 @@
     <div class="modal-body" id="fichaBody"></div>
   </div>
 </div>
+
+<!-- ================================================================ MODAL: MI PROGRESO (Fase 10) -->
+<div class="modal-bg" id="progresoModal" style="display:none" onclick="if(event.target===this)cerrarProgreso()">
+  <div class="modal">
+    <div class="modal-hdr">
+      <h2>Mi progreso</h2>
+      <button class="modal-close no-print" onclick="cerrarProgreso()">×</button>
+    </div>
+    <div class="modal-body" id="progresoBody"></div>
+  </div>
+</div>
 <script src="assets/data-presets.js"></script>
 <script src="assets/traccion.js"></script>
 <script src="assets/export.js"></script>
@@ -1602,6 +1640,8 @@
 <script src="assets/fatiga.js"></script>
 <script src="assets/fluencia.js"></script>
 <script src="assets/ficha.js"></script>
+<script src="assets/material-sync.js"></script>
+<script src="assets/progreso.js"></script>
 <script src="assets/app.js"></script>
 
 <div class="help-overlay" id="helpOverlay" onclick="closeHelp(event)">

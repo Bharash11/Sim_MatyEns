@@ -73,6 +73,32 @@ PRESETS.fragil.frac     = { kic:18 };
 PRESETS.hormigon.frac   = { kic:1.0 };
 PRESETS.nylon.frac      = { kic:3  };
 
+// FIX (Fase 6a — unificar Dureza con PRESETS, mismo problema que Fase 1 pero
+// en Ensayo no destructivo): ROCKWELL_REF/BRINELL_REF/VICKERS_REF vivían cada
+// una con sus propios valores de dureza para los mismos materiales, sin
+// relación con PRESETS ni entre sí. Acá se centraliza el valor "real" de
+// dureza (hb/hv/hr) -- los parámetros propios de cada ensayo (carga P,
+// diagonal/profundidad d, posición del dial) siguen en cada archivo porque
+// son de la puesta a punto de ESE ensayo puntual, no una propiedad del
+// material. Los números son los mismos que ya estaban en cada REF (no se
+// inventó ningún valor nuevo); wolfram/tungsteno y algunos no-metales quedan
+// afuera si no tenían dato real en ninguna de las tres tablas.
+PRESETS.acero.dureza     = { hb:130, hv:135, hr:{scale:'B', value:70} };
+PRESETS.aceroinox.dureza = { hb:150, hv:155, hr:{scale:'B', value:80} };
+PRESETS.fragil.dureza    = { hb:200, hv:210, hr:{scale:'C', value:20} };
+PRESETS.aluminio.dureza  = { hb:95,  hv:107, hr:{scale:'B', value:60} };
+PRESETS.titanio.dureza   = { hb:334, hv:349, hr:{scale:'C', value:34} };
+PRESETS.niquel.dureza    = { hb:70,  hv:75,  hr:{scale:'B', value:45} };
+PRESETS.molibdeno.dureza = { hb:160, hv:165, hr:{scale:'B', value:75} };
+PRESETS.magnesio.dureza  = { hb:50,  hv:57,  hr:{scale:'B', value:50} };
+PRESETS.zinc.dureza      = { hb:35,  hv:38,  hr:{scale:'B', value:35} };
+PRESETS.tungsteno.dureza = { hb:250, hv:310, hr:{scale:'C', value:22} };
+PRESETS.laton.dureza     = { hb:55,  hv:60,  hr:{scale:'B', value:55} };
+PRESETS.cobre.dureza     = { hb:45,  hv:50  };
+PRESETS.oro.dureza       = { hb:25,  hv:25  };
+PRESETS.plata.dureza     = { hb:25,  hv:27  };
+PRESETS.ceramica.dureza  = { hv:1700 };
+
 function applyPreset(prefix, val) {
   val = val || document.getElementById(prefix==='e'?'e_preset':prefix+'_preset')?.value || '';
   if (!val) return;

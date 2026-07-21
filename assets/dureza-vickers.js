@@ -1,22 +1,21 @@
 // dureza-vickers.js — microdureza Vickers + correlación TS-dureza + conversión entre escalas
 
-const VICKERS_REF = {
-  ceramica:   {hv:1700, p:1000, d:0.033},
-  acero:      {hv:135,  p:1000, d:0.117},
-  aceroinox:  {hv:155,  p:1000, d:0.109},
-  fragil:     {hv:210,  p:1000, d:0.094},
-  aluminio:   {hv:107,  p:300,  d:0.072},
-  cobre:      {hv:50,   p:300,  d:0.106},
-  titanio:    {hv:349,  p:1000, d:0.073},
-  niquel:     {hv:75,   p:500,  d:0.111},
-  molibdeno:  {hv:165,  p:1000, d:0.106},
-  magnesio:   {hv:57,   p:300,  d:0.099},
-  zinc:       {hv:38,   p:300,  d:0.121},
-  tungsteno:  {hv:310,  p:1000, d:0.077},
-  laton:      {hv:60,   p:500,  d:0.124},
-  plata:      {hv:27,   p:200,  d:0.117},
-  oro:        {hv:25,   p:200,  d:0.122},
+// FIX (Fase 6a): hv ahora sale de PRESETS[x].dureza.hv (misma fuente que
+// Rockwell/Brinell); p y d son la carga y diagonal de ESTE ensayo puntual.
+// VICKERS_REF mantiene el mismo shape {hv,p,d} de antes -- el test FIX #34
+// (VICKERS_REF — los 15 pares...) sigue funcionando sin tocarlo.
+const VICKERS_PD = {
+  ceramica:{p:1000,d:0.033}, acero:{p:1000,d:0.117}, aceroinox:{p:1000,d:0.109},
+  fragil:{p:1000,d:0.094}, aluminio:{p:300,d:0.072}, cobre:{p:300,d:0.106},
+  titanio:{p:1000,d:0.073}, niquel:{p:500,d:0.111}, molibdeno:{p:1000,d:0.106},
+  magnesio:{p:300,d:0.099}, zinc:{p:300,d:0.121}, tungsteno:{p:1000,d:0.077},
+  laton:{p:500,d:0.124}, plata:{p:200,d:0.117}, oro:{p:200,d:0.122},
 };
+const VICKERS_REF = {};
+for (const [key, pd] of Object.entries(VICKERS_PD)) {
+  const hv = PRESETS[key]?.dureza?.hv;
+  if (hv !== undefined) VICKERS_REF[key] = { hv, p:pd.p, d:pd.d };
+}
 function dzApplyVickersMaterial(){
   const key = document.getElementById('dz_vMat').value;
   const ref = VICKERS_REF[key];

@@ -1,21 +1,22 @@
 // dureza-brinell.js — escala Brinell
 
-const BRINELL_REF = {
-  acero:     {hb:130, p:3000, d:5.20},
-  aceroinox: {hb:150, p:3000, d:4.90},
-  fragil:    {hb:200, p:3000, d:4.25},
-  aluminio:  {hb:95,  p:500,  d:2.55},
-  cobre:     {hb:45,  p:500,  d:3.70},
-  titanio:   {hb:334, p:3000, d:3.35},
-  niquel:    {hb:70,  p:1000, d:4.15},
-  molibdeno: {hb:160, p:3000, d:4.75},
-  magnesio:  {hb:50,  p:500,  d:3.50},
-  zinc:      {hb:35,  p:500,  d:4.15},
-  tungsteno: {hb:250, p:3000, d:3.85},
-  laton:     {hb:55,  p:500,  d:3.35},
-  plata:     {hb:25,  p:500,  d:4.90},
-  oro:       {hb:25,  p:500,  d:4.90},
+// FIX (Fase 6a): hb ahora sale de PRESETS[x].dureza.hb (misma fuente que
+// Rockwell/Vickers) en vez de estar hardcodeado acá también; p y d son la
+// carga y diagonal de ESTE ensayo puntual para reproducir ese HB, así que
+// quedan acá. BRINELL_REF se arma combinando ambas fuentes, mismo shape
+// {hb,p,d} que tenía antes -- nada que lo consume necesita cambiar.
+const BRINELL_PD = {
+  acero:{p:3000,d:5.20}, aceroinox:{p:3000,d:4.90}, fragil:{p:3000,d:4.25},
+  aluminio:{p:500,d:2.55}, cobre:{p:500,d:3.70}, titanio:{p:3000,d:3.35},
+  niquel:{p:1000,d:4.15}, molibdeno:{p:3000,d:4.75}, magnesio:{p:500,d:3.50},
+  zinc:{p:500,d:4.15}, tungsteno:{p:3000,d:3.85}, laton:{p:500,d:3.35},
+  plata:{p:500,d:4.90}, oro:{p:500,d:4.90},
 };
+const BRINELL_REF = {};
+for (const [key, pd] of Object.entries(BRINELL_PD)) {
+  const hb = PRESETS[key]?.dureza?.hb;
+  if (hb !== undefined) BRINELL_REF[key] = { hb, p:pd.p, d:pd.d };
+}
 function dzApplyBrinellMaterial(){
   const key = document.getElementById('dz_brMat').value;
   const ref = BRINELL_REF[key];

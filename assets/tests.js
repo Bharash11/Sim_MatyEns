@@ -440,18 +440,61 @@ const testSuite = [
     }
   },
   {
-    id: 'fr_charpy_dbtt', group: 'Fractura, fatiga y fluencia',
-    name: 'Charpy — transición dúctil-frágil monótona y ubicada en T_mid',
+    // FIX (Fase 8, punto 2): regresión sobre frSyncKicPresetValues() -- las 4
+    // opciones con [data-material] deben terminar con el MISMO value que
+    // PRESETS[x].frac.kic, no un número hardcodeado en el HTML que se pueda
+    // desincronizar. Corre en el navegador (necesita el <select> del DOM).
+    id: 'fr_kic_preset_sync', group: 'Fractura, fatiga y fluencia',
+    name: 'rt_kicPreset — opciones con material se sincronizan con PRESETS[x].frac.kic',
     run: () => {
-      const p = FR_IMPACTO_PRESETS.bajoC;
-      const antes = frSigmoid(p.Tmid-40, p.Elow, p.Ehigh, p.Tmid, p.width);
-      const enMedio = frSigmoid(p.Tmid, p.Elow, p.Ehigh, p.Tmid, p.width);
-      const despues = frSigmoid(p.Tmid+40, p.Elow, p.Ehigh, p.Tmid, p.width);
-      if (!(antes < enMedio && enMedio < despues)) return { ok: false, msg: `no monótona: ${antes.toFixed(1)}, ${enMedio.toFixed(1)}, ${despues.toFixed(1)}` };
-      const fcc = FR_IMPACTO_PRESETS.fcc;
-      const rango = frSigmoid(fcc.Tmid+40,fcc.Elow,fcc.Ehigh,fcc.Tmid,fcc.width) - frSigmoid(fcc.Tmid-40,fcc.Elow,fcc.Ehigh,fcc.Tmid,fcc.width);
-      if (Math.abs(rango) > 15) return { warn: true, msg: `FCC debería ser casi plana, varió ${rango.toFixed(1)} J` };
-      return { ok: true, msg: `BCC bajo C monótona ✓, FCC ~plana (Δ=${rango.toFixed(1)} J) ✓` };
+      const sel = document.getElementById('rt_kicPreset');
+      if (!sel) return { warn: true, msg: 'No se encontró #rt_kicPreset (¿pestaña Fractura no cargada en el DOM?)' };
+      const conMaterial = Array.from(sel.options).filter(o => o.dataset.material);
+      if (conMaterial.length !== 4) return { ok: false, msg: `Se esperaban 4 opciones con [data-material], hay ${conMaterial.length}` };
+      const errores = [];
+      for (const opt of conMaterial) {
+        const kic = PRESETS[opt.dataset.material]?.frac?.kic;
+        if (kic === undefined) { errores.push(`${opt.dataset.material}: sin PRESETS[x].frac.kic`); continue; }
+        if (Number(opt.value) !== kic) errores.push(`${opt.dataset.material}: option.value=${opt.value} ≠ PRESETS.kic=${kic}`);
+      }
+      if (errores.length) return { ok: false, msg: errores.join('; ') };
+      return { ok: true, msg: `${conMaterial.length} opciones sincronizadas con PRESETS[x].frac.kic ✓` };
+    }
+  },
+  {
+    id: 'fr_charpy_dbtt', group: 'Fractura, fatiga y fluencia',
+    name: 'Charpy — transición dúctil-frágil monótona (hasDBTT) o ~plana (sin DBTT) en todas las familias de FR_IMPACTO_PRESETS',
+    // FIX (Fase 9d): antes hardcodeaba solo bajoC (monótona) y fcc (plana) a
+    // mano. Ahora recorre TODAS las entradas de FR_IMPACTO_PRESETS y decide
+    // qué chequear según su propio flag hasDBTT -- así bajoCFino (Fase 9,
+    // grano fino) queda cubierto automáticamente sin duplicar el test, y una
+    // 5ta familia futura tampoco va a requerir tocar tests.js.
+    run: () => {
+      const errores = [];
+      Object.entries(FR_IMPACTO_PRESETS).forEach(([key, p]) => {
+        const antes = frSigmoid(p.Tmid-40, p.Elow, p.Ehigh, p.Tmid, p.width);
+        const enMedio = frSigmoid(p.Tmid, p.Elow, p.Ehigh, p.Tmid, p.width);
+        const despues = frSigmoid(p.Tmid+40, p.Elow, p.Ehigh, p.Tmid, p.width);
+        if (p.hasDBTT) {
+          if (!(antes < enMedio && enMedio < despues)) errores.push(`${key}: no monótona (${antes.toFixed(1)}, ${enMedio.toFixed(1)}, ${despues.toFixed(1)})`);
+        } else {
+          const rango = despues - antes;
+          if (Math.abs(rango) > 15) errores.push(`${key}: debería ser casi plana, varió ${rango.toFixed(1)} J`);
+        }
+      });
+      if (errores.length) return { ok: false, msg: errores.join('; ') };
+      return { ok: true, msg: `${Object.keys(FR_IMPACTO_PRESETS).length} familias verificadas (monótonas las con DBTT, planas las sin DBTT) ✓` };
+    }
+  },
+  {
+    id: 'fr_charpy_grano_fino_vs_grueso', group: 'Fractura, fatiga y fluencia',
+    name: 'Charpy — grano fino (Fase 9) tiene menor DBTT y mayor meseta superior que grano grueso (Hall-Petch)',
+    run: () => {
+      const grueso = FR_IMPACTO_PRESETS.bajoC;
+      const fino = FR_IMPACTO_PRESETS.bajoCFino;
+      if (!(fino.Tmid < grueso.Tmid)) return { ok: false, msg: `Tmid grano fino (${fino.Tmid}) debería ser menor que grano grueso (${grueso.Tmid})` };
+      if (!(fino.Ehigh >= grueso.Ehigh)) return { ok: false, msg: `Ehigh grano fino (${fino.Ehigh}) debería ser ≥ grano grueso (${grueso.Ehigh})` };
+      return { ok: true, msg: `DBTT ${fino.Tmid}°C < ${grueso.Tmid}°C, meseta superior ${fino.Ehigh} ≥ ${grueso.Ehigh} J ✓` };
     }
   },
   {
@@ -596,6 +639,42 @@ const testSuite = [
     }
   },
   {
+    // FIX (Fase 8, punto 1): la ficha ahora suma un resumen S-N/Basquin junto
+    // al de Paris, SOLO para los 3 materiales mapeados en FICHA_SN_REF, y
+    // rotulado con el grado de referencia (ej. "Acero 1045") -- no debe
+    // aparecer para materiales sin mapeo (ej. cobre, que sí tiene Paris pero
+    // no un grado S-N de referencia asignado).
+    id: 'ficha_sn_basquin', group: 'Ficha técnica (Fase 4)',
+    name: 'Ficha — resumen S-N/Basquin (Fase 8) presente solo para materiales con grado de referencia',
+    run: () => {
+      const errores = [];
+      try {
+        openFichaPicker();
+        document.getElementById('fichaMatSelect').value = 'acero';
+        renderFichaMaterial();
+        const htmlAcero = document.getElementById('fichaBody').innerHTML;
+        if (!/Curva S-N \(Basquin\)/.test(htmlAcero)) errores.push('acero: falta el resumen S-N');
+        if (!htmlAcero.includes(FT_SN_PRESETS.acero1045.label)) errores.push('acero: no cita el grado de referencia (Acero 1045)');
+        // Mismo branching que renderFichaMaterial(): con σ_a=200 ≤ S_e=310
+        // (Acero 1045) da vida infinita, no un Nf finito.
+        const p1045 = FT_SN_PRESETS.acero1045;
+        const infinita = p1045.hasLimit && FICHA_SN_SA_EJEMPLO <= p1045.Se;
+        const textoEsperado = infinita ? 'mayor a 10⁷ ciclos (infinita)' : ftBasquinN(FICHA_SN_SA_EJEMPLO, p1045.sfp, p1045.b).toExponential(2);
+        if (!htmlAcero.includes(textoEsperado)) errores.push(`acero: vida estimada no coincide (esperado "${textoEsperado}")`);
+
+        openFichaPicker();
+        document.getElementById('fichaMatSelect').value = 'cobre';
+        renderFichaMaterial();
+        const htmlCobre = document.getElementById('fichaBody').innerHTML;
+        if (/Curva S-N \(Basquin\)/.test(htmlCobre)) errores.push('cobre: no debería mostrar resumen S-N (sin grado de referencia mapeado)');
+      } finally {
+        closeFicha();
+      }
+      if (errores.length) return { ok: false, msg: errores.join('; ') };
+      return { ok: true, msg: 'Resumen S-N correcto en acero (con referencia y vida estimada), ausente en cobre ✓' };
+    }
+  },
+  {
     id: 'ficha_hb_correlacion', group: 'Ficha técnica (Fase 4)',
     name: 'Ficha — dureza estimada usa la misma correlación TS≈3.45·HB del ejercicio de dureza',
     run: () => {
@@ -676,6 +755,310 @@ const testSuite = [
       if (!tieneDatosCoincide) return { ok: false, msg: 'No mostró los datos de Compresión con el material coincidente' };
       if (!tieneAvisoNoCoincide) return { ok: false, msg: 'Mostró datos de Compresión con un material que no coincide' };
       return { ok: true, msg: 'Lectura cruzada con Compresión correcta (coincide → datos, no coincide → aviso) ✓' };
+    }
+  },
+  {
+    id: 'dureza_presets_integrados', group: 'Dureza',
+    name: 'ROCKWELL_REF/BRINELL_REF/VICKERS_REF — integrados con PRESETS.dureza (Fase 6a)',
+    run: () => {
+      const casos = [
+        ['acero', 'hb', BRINELL_REF, 130], ['acero', 'hv', VICKERS_REF, 135],
+        ['aluminio', 'hb', BRINELL_REF, 95], ['titanio', 'hv', VICKERS_REF, 349],
+      ];
+      const errores = [];
+      for (const [mat, campo, ref, esperado] of casos) {
+        const presetsVal = PRESETS[mat]?.dureza?.[campo];
+        if (presetsVal !== esperado) errores.push(`PRESETS.${mat}.dureza.${campo}=${presetsVal} (esperado ${esperado})`);
+        if (ref[mat]?.[campo] !== esperado) errores.push(`${campo==='hb'?'BRINELL_REF':'VICKERS_REF'}.${mat}.${campo}=${ref[mat]?.[campo]} (esperado ${esperado}, debería venir de PRESETS)`);
+      }
+      const rkAcero = ROCKWELL_REF.acero;
+      if (!rkAcero || rkAcero.scale !== 'B' || rkAcero.hr !== 70) errores.push(`ROCKWELL_REF.acero=${JSON.stringify(rkAcero)} (esperado scale:B, hr:70)`);
+      if (errores.length) return { ok: false, msg: errores.join('; ') };
+      return { ok: true, msg: 'Las 3 tablas de dureza leen de PRESETS.dureza, valores consistentes ✓' };
+    }
+  },
+  {
+    id: 'dureza_export_defined', group: 'Dureza',
+    name: 'Exportación del gráfico de correlación TS-HB (Fase 6b) — función y botón definidos',
+    run: () => {
+      if (typeof exportTsChart !== 'function') return { ok: false, msg: 'exportTsChart no definida' };
+      const boton = document.querySelector('[onclick="exportTsChart()"]');
+      if (!boton) return { ok: false, msg: 'No se encontró el botón de exportar en la pestaña Dureza' };
+      return { ok: true, msg: 'exportTsChart definida y botón presente ✓' };
+    }
+  },
+  {
+    id: 'ficha_dureza_real_vs_estimada', group: 'Ficha técnica (Fase 4)',
+    name: 'Ficha — usa HB/HV/HR reales (Fase 6) en vez de la correlación cuando existen',
+    run: () => {
+      openFichaPicker();
+      let errores = [];
+      try {
+        document.getElementById('fichaMatSelect').value = 'acero';
+        renderFichaMaterial();
+        const htmlAcero = document.getElementById('fichaBody').innerHTML;
+        if (!/HB \(Brinell\)<\/span><span class="fv">130/.test(htmlAcero)) errores.push('acero: no mostró HB real (130)');
+        if (/HB estimado/.test(htmlAcero)) errores.push('acero: no debería mostrar el estimado, tiene dato real');
+
+        openFichaPicker();
+        document.getElementById('fichaMatSelect').value = 'madera';
+        renderFichaMaterial();
+        const htmlMadera = document.getElementById('fichaBody').innerHTML;
+        if (!/HB estimado/.test(htmlMadera)) errores.push('madera: debería mostrar el estimado (no tiene dato real de dureza)');
+      } finally {
+        closeFicha();
+      }
+      if (errores.length) return { ok: false, msg: errores.join('; ') };
+      return { ok: true, msg: 'Ficha prioriza HB/HV/HR real sobre la correlación cuando el material lo tiene ✓' };
+    }
+  },
+  // FIX (Fase 7 — sync cruzado de material, pedido pendiente desde v2.3):
+  // tests de assets/material-sync.js. Todos restauran el valor original de
+  // cada <select> tocado en un finally, para no dejar el DOM en un estado
+  // distinto al que tenía antes de correr la suite (varios tests de arriba,
+  // ej. dureza_presets_integrados, asumen los selects en su estado inicial).
+  {
+    id: 'sync_excluye_2_slots', group: 'Sincronización de material (Fase 7)',
+    name: 'Registro de sync NO incluye Comparar/Compuesto (2 materiales a la vez)',
+    run: () => {
+      const ids = MATERIAL_SYNC_TARGETS.map(t => t.id);
+      const noDeberian = ['k1_preset', 'k2_preset']; // Comparar (c1/c2) no tiene <select> con id
+      const presentes = noDeberian.filter(id => ids.includes(id));
+      if (presentes.length) return { ok: false, msg: `El registro incluye selectores de 2 slots que deberían quedar afuera: ${presentes.join(', ')}` };
+      return { ok: true, msg: `Registro con ${ids.length} selectores, ninguno de Comparar/Compuesto ✓` };
+    }
+  },
+  {
+    id: 'sync_material_completo', group: 'Sincronización de material (Fase 7)',
+    name: 'syncMaterialToAllTests — "Acero" se aplica en las 7 pestañas donde corresponde, no toca Janka/Esclerómetro',
+    run: () => {
+      const ids = ['e_preset','co_preset','t_preset','dz_rkMat','dz_brMat','dz_vMat','dz_jkMat','dz_scMat','ft_parisMat'];
+      const originales = {}; ids.forEach(id => { const el = document.getElementById(id); originales[id] = el ? el.value : undefined; });
+      const errores = [];
+      try {
+        document.getElementById('dz_jkMat').value = 'quebracho'; // material sin relación, para confirmar que NO se pisa
+        document.getElementById('dz_scMat').value = ''; // Esclerómetro solo tiene hormigón como opción -- 'acero' nunca puede coincidir
+        document.getElementById('e_preset').value = 'acero';
+        syncMaterialToAllTests('e_preset');
+        const esperanAcero = ['co_preset','t_preset','dz_rkMat','dz_brMat','dz_vMat','ft_parisMat'];
+        for (const id of esperanAcero) {
+          if (document.getElementById(id).value !== 'acero') errores.push(`${id} no quedó en 'acero'`);
+        }
+        if (document.getElementById('co_E').value !== String(PRESETS.acero.E)) errores.push('co_E no se actualizó con applyPresetComp0() real');
+        if (document.getElementById('dz_jkMat').value !== 'quebracho') errores.push('dz_jkMat se tocó (Janka es solo maderas, "acero" no debería afectarlo)');
+        if (document.getElementById('dz_scMat').value !== '') errores.push('dz_scMat se tocó (Esclerómetro es solo hormigón)');
+      } finally {
+        ids.forEach(id => { const el = document.getElementById(id); if (el && originales[id] !== undefined) el.value = originales[id]; });
+      }
+      if (errores.length) return { ok: false, msg: errores.join('; ') };
+      return { ok: true, msg: 'Sync de "Acero" correcto: 6 pestañas actualizadas con valores reales, Janka/Esclerómetro intactos ✓' };
+    }
+  },
+  {
+    id: 'sync_material_parcial', group: 'Sincronización de material (Fase 7)',
+    name: 'syncMaterialToAllTests — "Oro" no está en Rockwell (metal blando excluido de esa tabla, ver dureza-rockwell.js)',
+    run: () => {
+      const ids = ['e_preset','dz_rkMat','dz_brMat','dz_vMat'];
+      const originales = {}; ids.forEach(id => { const el = document.getElementById(id); originales[id] = el ? el.value : undefined; });
+      const errores = [];
+      try {
+        document.getElementById('dz_rkMat').value = 'aluminio'; // para confirmar que NO se pisa con 'oro'
+        document.getElementById('e_preset').value = 'oro';
+        syncMaterialToAllTests('e_preset');
+        if (document.getElementById('dz_brMat').value !== 'oro') errores.push('dz_brMat debería quedar en "oro" (Brinell sí tiene oro)');
+        if (document.getElementById('dz_vMat').value !== 'oro') errores.push('dz_vMat debería quedar en "oro" (Vickers sí tiene oro)');
+        if (document.getElementById('dz_rkMat').value !== 'aluminio') errores.push('dz_rkMat se pisó con "oro", pero Rockwell no tiene oro en su <select>');
+      } finally {
+        ids.forEach(id => { const el = document.getElementById(id); if (el && originales[id] !== undefined) el.value = originales[id]; });
+      }
+      if (errores.length) return { ok: false, msg: errores.join('; ') };
+      return { ok: true, msg: 'Sync parcial correcto: Brinell/Vickers reciben "oro", Rockwell queda intacto ✓' };
+    }
+  },
+  {
+    id: 'sync_sin_seleccion', group: 'Sincronización de material (Fase 7)',
+    name: 'syncMaterialToAllTests — sin material elegido en el origen, no rompe ni toca otras pestañas',
+    run: () => {
+      const original = document.getElementById('co_preset').value;
+      const eOriginal = document.getElementById('e_preset').value;
+      let excepcion = null;
+      try {
+        document.getElementById('e_preset').value = '';
+        syncMaterialToAllTests('e_preset');
+      } catch (e) { excepcion = e.message; }
+      const coSigueIgual = document.getElementById('co_preset').value === original;
+      document.getElementById('e_preset').value = eOriginal;
+      if (excepcion) return { ok: false, msg: `Tiró una excepción: ${excepcion}` };
+      if (!coSigueIgual) return { ok: false, msg: 'Sin material elegido igual modificó Compresión' };
+      return { ok: true, msg: 'Selector vacío: no hace nada y no rompe ✓' };
+    }
+  },
+  {
+    id: 'ficha_dureza_cruzada', group: 'Ficha técnica (Fase 4)',
+    name: 'Ficha — extiende la lectura cruzada de la Fase 5c (Compresión) a Dureza (Brinell/Vickers/Rockwell)',
+    run: () => {
+      const brSel = document.getElementById('dz_brMat');
+      if (!brSel) return { warn: true, msg: 'No se encontró #dz_brMat (¿pestaña Dureza no cargada en el DOM?)' };
+      const brOriginal = brSel.value;
+      const pOriginal = document.getElementById('dz_brP').value;
+      const dOriginal = document.getElementById('dz_brD').value;
+      let tieneMedidoCoincide = false, noTieneMedidoNoCoincide = false;
+      // FIX: mismo motivo que ficha_compresion_cruzada -- reabrir el picker
+      // antes de cada material porque renderFichaMaterial() reemplaza el
+      // <select> anterior, todo en try/finally para restaurar el DOM.
+      try {
+        brSel.value = 'acero';
+        dzApplyBrinellMaterial(); // carga P/D de referencia y calcula el HB "medido" en pantalla
+        openFichaPicker();
+        document.getElementById('fichaMatSelect').value = 'acero';
+        renderFichaMaterial();
+        const htmlCoincide = document.getElementById('fichaBody').innerHTML;
+        tieneMedidoCoincide = /HB medido en tu ensayo \(Brinell\)/.test(htmlCoincide);
+
+        openFichaPicker();
+        document.getElementById('fichaMatSelect').value = 'aluminio'; // Brinell sigue en "acero" -> no debería cruzar
+        renderFichaMaterial();
+        const htmlNoCoincide = document.getElementById('fichaBody').innerHTML;
+        noTieneMedidoNoCoincide = !/HB medido en tu ensayo/.test(htmlNoCoincide);
+      } finally {
+        brSel.value = brOriginal;
+        document.getElementById('dz_brP').value = pOriginal;
+        document.getElementById('dz_brD').value = dOriginal;
+        closeFicha();
+      }
+      if (!tieneMedidoCoincide) return { ok: false, msg: 'No mostró el HB medido en Brinell con el material coincidente' };
+      if (!noTieneMedidoNoCoincide) return { ok: false, msg: 'Mostró HB medido con un material que no coincide con Brinell' };
+      return { ok: true, msg: 'Lectura cruzada con Dureza (Brinell) correcta, mismo patrón que Compresión (Fase 5c) ✓' };
+    }
+  },
+  {
+    // FIX (Fase 8 — corte de columnas al imprimir): este test es una
+    // salvaguarda de REGRESIÓN sobre las reglas de styles.css (que las 3
+    // reglas del fix sigan presentes), NO una verificación visual. Corre en
+    // el navegador (lee document.styleSheets); aun así NO puede confirmar
+    // que el texto ya no se corte en una impresión/PDF real -- eso depende
+    // del motor de impresión del navegador/SO, algo que ningún test
+    // automatizado (navegador o Node) puede reproducir. Verificación manual
+    // pendiente: abrir una ficha con datos de fractura/fatiga (ej. aluminio,
+    // que tiene K_IC/Paris/fluencia) y usar "Imprimir → Vista previa",
+    // revisando que ningún valor con unidad (GPa, MPa·√m, kJ/m³, J/mol)
+    // quede cortado contra el borde derecho de la hoja.
+    id: 'ficha_print_css_fix', group: 'Ficha técnica (Fase 4)',
+    name: 'Ficha — reglas @page/@media print del fix de corte de columnas presentes en styles.css',
+    run: () => {
+      let printRuleText = '';
+      let pageRuleFound = false;
+      let sheetsReadable = 0;
+      let sheetsBlocked = 0;
+      for (const sheet of document.styleSheets) {
+        let rules;
+        try {
+          rules = sheet.cssRules || sheet.rules;
+          sheetsReadable++;
+        } catch (e) {
+          sheetsBlocked++; // típico bajo file:// (Chrome trata la lectura de cssRules externas como cross-origin)
+          continue;
+        }
+        if (!rules) continue;
+        for (const rule of rules) {
+          if (rule.type === CSSRule.MEDIA_RULE && /print/.test(rule.conditionText || rule.media?.mediaText || '')) {
+            printRuleText += rule.cssText;
+          }
+          if (rule.type === CSSRule.PAGE_RULE) pageRuleFound = true;
+        }
+      }
+      // FIX: distinguir "no se pudo leer ninguna hoja" (típico al abrir el
+      // .html directo con file://, donde Chrome bloquea la lectura de
+      // cssRules de hojas externas por su modelo de seguridad para
+      // recursos locales) de "se pudo leer, pero la regla no está" -- son
+      // diagnósticos distintos y mezclarlos en un solo warning genérico
+      // era confuso.
+      if (sheetsReadable === 0 && sheetsBlocked > 0) {
+        return { warn: true, msg: `No se pudo leer ninguna hoja de estilos (${sheetsBlocked} bloqueada(s)) — normal si abriste el .html con file:// en vez de un servidor local; no es una falla del fix. Confirmar manualmente con Vista previa de impresión.` };
+      }
+      if (!printRuleText) return { ok: false, msg: 'Las hojas se pudieron leer pero no hay ninguna regla @media print — el fix no está' };
+      if (!pageRuleFound) return { ok: false, msg: 'Falta la regla @page (margen de impresión explícito)' };
+      if (!/\.ficha\s*{[^}]*grid-template-columns\s*:\s*1fr/.test(printRuleText)) {
+        return { ok: false, msg: '.ficha no pasa a 1 columna dentro de @media print' };
+      }
+      if (!/\.ficha-row\s*{[^}]*flex-wrap\s*:\s*wrap/.test(printRuleText)) {
+        return { ok: false, msg: '.ficha-row no permite wrap dentro de @media print' };
+      }
+      return { ok: true, msg: '@page + .ficha a 1 columna + wrap presentes ✓ (pendiente: confirmar visualmente con Vista previa de impresión)' };
+    }
+  },
+  // ---- PROGRESO (Fase 10) ----
+  {
+    id: 'prog_formato_vacio', group: 'Progreso (Fase 10)',
+    name: 'progVacio() — estructura base correcta',
+    run: () => {
+      const v = progVacio();
+      if (v.version !== 1) return { ok: false, msg: `version esperada 1, vino ${v.version}` };
+      if (v.alumno !== '' || v.ultimaPestana !== null) return { ok: false, msg: 'alumno/ultimaPestana deberían arrancar vacíos' };
+      if (typeof v.materiales !== 'object' || !Array.isArray(v.eventos)) return { ok: false, msg: 'materiales/eventos con tipo incorrecto' };
+      return { ok: true, msg: 'estructura vacía correcta ✓' };
+    }
+  },
+  {
+    id: 'prog_guardar_cargar', group: 'Progreso (Fase 10)',
+    name: 'progGuardar()/progCargar() — round-trip por localStorage',
+    // FIX (Fase 10f): corre contra el localStorage real (mismo patrón que el
+    // test 'localstorage' de Configuraciones), pero respalda y restaura el
+    // progreso real del usuario en un finally para no perderlo por correr
+    // los tests -- mismo cuidado que ya tuvieron con la ficha en v3.11.
+    run: () => {
+      const backup = localStorage.getItem(PROGRESO_KEY);
+      const prevData = PROG_DATA;
+      try {
+        PROG_DATA = { version:1, alumno:'Test', ultimaPestana:'dureza', materiales:{e_preset:'acero'}, eventos:[{ts:'2026-01-01T00:00:00.000Z',tipo:'material',pestana:'Tracción',material:'acero'}] };
+        progGuardar();
+        const releido = progCargar();
+        if (releido.alumno !== 'Test' || releido.ultimaPestana !== 'dureza') return { ok: false, msg: 'no se releyeron alumno/ultimaPestana' };
+        if (releido.materiales.e_preset !== 'acero') return { ok: false, msg: 'no se releyó materiales.e_preset' };
+        if (releido.eventos.length !== 1) return { ok: false, msg: `se esperaba 1 evento, vinieron ${releido.eventos.length}` };
+        return { ok: true, msg: 'round-trip OK ✓' };
+      } finally {
+        PROG_DATA = prevData;
+        if (backup === null) localStorage.removeItem(PROGRESO_KEY); else localStorage.setItem(PROGRESO_KEY, backup);
+      }
+    }
+  },
+  {
+    id: 'prog_tope_eventos', group: 'Progreso (Fase 10)',
+    name: 'progRegistrar() — tope de 200 eventos, se queda con los últimos',
+    run: () => {
+      const backup = localStorage.getItem(PROGRESO_KEY);
+      const prevData = PROG_DATA;
+      try {
+        PROG_DATA = progVacio();
+        for (let i=0; i<PROG_MAX_EVENTOS+10; i++) progRegistrar('material', { pestana:'Test', material:'m'+i });
+        if (PROG_DATA.eventos.length !== PROG_MAX_EVENTOS) return { ok: false, msg: `se esperaban ${PROG_MAX_EVENTOS} eventos, quedaron ${PROG_DATA.eventos.length}` };
+        const ultimo = PROG_DATA.eventos[PROG_DATA.eventos.length-1];
+        if (ultimo.material !== `m${PROG_MAX_EVENTOS+9}`) return { ok: false, msg: 'no se conservaron los eventos más recientes' };
+        return { ok: true, msg: `tope en ${PROG_MAX_EVENTOS} ✓, se descartan los más viejos` };
+      } finally {
+        PROG_DATA = prevData;
+        if (backup === null) localStorage.removeItem(PROGRESO_KEY); else localStorage.setItem(PROGRESO_KEY, backup);
+      }
+    }
+  },
+  {
+    id: 'prog_sin_localstorage', group: 'Progreso (Fase 10)',
+    name: 'progGuardar() — no rompe si localStorage falla (ej. modo incógnito con storage deshabilitado)',
+    run: () => {
+      const prevData = PROG_DATA;
+      const originalSetItem = localStorage.setItem;
+      try {
+        localStorage.setItem = () => { throw new DOMException('QuotaExceededError simulado'); };
+        PROG_DATA = progVacio();
+        progGuardar(); // no debería tirar
+        return { ok: true, msg: 'progGuardar() no propaga la excepción ✓' };
+      } catch(e) {
+        return { ok: false, msg: `progGuardar() dejó pasar la excepción: ${e.message}` };
+      } finally {
+        localStorage.setItem = originalSetItem;
+        PROG_DATA = prevData;
+      }
     }
   },
 ];
