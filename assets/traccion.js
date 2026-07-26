@@ -29,13 +29,26 @@ function updateCompDerived(){
   const d=numOrDefault('co_d0',15);
   const h=numOrDefault('co_h0',30);
   const A=Math.PI*(d/2)**2;
-  const ratio=h/d;
   document.getElementById('co_dA0').textContent=A.toFixed(1);
+  const warnEl = document.getElementById('co_warnRatio');
+  // FIX (QA v4.4 — hallazgo Etapa 2): d₀ tiene min="1" en el HTML, pero eso
+  // no bloquea tipear 0 (o un negativo) a mano en un input type="number".
+  // Con d₀<=0 la relación h₀/d₀ daba Infinity/NaN y se mostraba tal cual en
+  // pantalla ("h₀/d₀ = Infinity está fuera del rango..."), un texto poco
+  // profesional para un dato que ya de por sí no tiene sentido físico
+  // (un diámetro no puede ser cero ni negativo). Se valida antes de dividir,
+  // mismo criterio que numOrDefault ya usa para vacío/no-numérico.
+  if (!(d>0)) {
+    document.getElementById('co_ratio').textContent = '—';
+    warnEl.style.display = 'block';
+    warnEl.textContent = 'El diámetro d₀ debe ser un número positivo mayor que cero.';
+    return;
+  }
+  const ratio=h/d;
   document.getElementById('co_ratio').textContent=ratio.toFixed(2);
   // FIX #11: el texto de ayuda ya menciona que fuera de 1-3 la probeta puede
   // pandear, pero nunca se avisaba en pantalla si esto ocurría. Se agrega el
   // aviso, igual en espíritu al que ya existe en Brinell para d/D.
-  const warnEl = document.getElementById('co_warnRatio');
   if (ratio < 1 || ratio > 3) {
     warnEl.style.display = 'block';
     warnEl.textContent = `h₀/d₀ = ${ratio.toFixed(2)} está fuera del rango recomendado (1 a 3). La probeta podría pandear (flexionar) en vez de aplastarse uniformemente, y el ensayo dejaría de ser válido.`;
@@ -691,7 +704,7 @@ function showFicha() {
   <div class="ficha-header">
     <div>
       <div class="ficha-title">Informe de Ensayo de Tracción</div>
-      <div class="ficha-meta">Fecha: ${now} — Simulador de Ensayos Mecánicos v3.17</div>
+      <div class="ficha-meta">Fecha: ${now} — Simulador de Ensayos Mecánicos v4.8</div>
     </div>
     <div style="text-align:right">
       <div class="ficha-badge ${frag?'badge-fragil':'badge-ductil'}">${frag?'MATERIAL FRÁGIL':'MATERIAL DÚCTIL'}</div>

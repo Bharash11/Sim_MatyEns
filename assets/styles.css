@@ -23,6 +23,24 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 header{height:var(--header);background:var(--surface);border-bottom:1px solid var(--border);
   display:flex;align-items:center;padding:0 20px;gap:16px;position:sticky;top:0;z-index:200}
 header h1{font-size:15px;font-weight:600;letter-spacing:-.01em}
+
+/* FIX (QA v4.4 — hallazgo Etapa 8): a diferencia de la tabbar (que ya tenía
+   overflow-x:auto propio) y del sidebar/metrics/ficha (que ya tienen su
+   breakpoint de 720px), el header nunca se adaptó a mobile: título + badge
+   de versión + botón "Ficha técnica" + botón "Mi progreso" + badge de
+   dispositivo en una sola fila sin wrap desbordaban el ancho de un celular
+   y arrastraban TODA la página a scroll horizontal (el botón "Mi progreso"
+   y el badge de dispositivo quedaban directamente fuera de la pantalla).
+   Se achica el header en <720px: menos padding/gap, título y botones más
+   compactos, y se oculta el badge de dispositivo (es solo informativo/
+   usado por el modo test, no aporta nada al alumno y es lo primero que
+   sobra si hay que elegir qué recortar). */
+@media(max-width:720px){
+  header{padding:0 10px;gap:6px}
+  header h1{font-size:13px}
+  header #fichaHeaderBtn,header #progresoHeaderBtn{padding:5px 8px!important;font-size:11px!important}
+  header .device-badge{display:none}
+}
 header .ver{font-size:11px;color:var(--muted);background:var(--surface2);padding:2px 7px;border-radius:10px}
 header .subtitle{font-size:12px;color:var(--muted);margin-left:auto}
 
@@ -164,6 +182,12 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 .comp-result th{font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
 .comp-result td:last-child{text-align:right;font-weight:600;color:var(--accent)}
 .note{font-size:11px;color:var(--muted);margin-top:6px;font-style:italic;line-height:1.5}
+/* FIX (v4.7 — minitexto de fórmula, pedido junto con la integración de Ficha
+   al Grupo A): una línea corta, en mono y con el color de acento, mostrando
+   la fórmula que produce los resultados de ESE ensayo -- mismo tratamiento
+   visual que ya se usaba a mano en Material compuesto (E_par=E₁·f₁+E₂·f₂),
+   ahora como clase reutilizable para no repetir el estilo inline. */
+.formula-mini{font-family:var(--mono);color:var(--accent);font-size:12px;font-weight:600;margin:6px 0 10px;letter-spacing:.01em}
 
 .tag{display:inline-block;font-size:10px;padding:2px 7px;border-radius:8px;font-weight:600;border:1px solid}
 .tag-blue{color:var(--elastic);border-color:var(--elastic);background:rgba(33,118,174,.08)}
@@ -396,6 +420,19 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 .dz-hint[open] summary{margin-bottom:6px}
 .dz-viz-wrap{background:var(--surface2);border-radius:var(--radius);padding:8px}
 @media(max-width:720px){.dz-subnav{gap:4px}.dz-subbtn{font-size:10px;padding:4px 7px}}
+
+/* FIX (v4.1): mismas reglas que .dz-subnav/.dz-subbtn/.dz-sub-panel/.dz-sub-ctrl,
+   reutilizadas 1:1 para el sub-nav de "Ensayos complementarios" (prefijo cm-). */
+.cm-subnav{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:4px}
+.cm-subbtn{font-size:11px;padding:5px 9px;border-radius:var(--radius);border:1px solid var(--border);
+  background:var(--surface);color:var(--muted);cursor:pointer;transition:background .15s,color .15s,border-color .15s}
+.cm-subbtn:hover{color:var(--text);border-color:var(--accent)}
+.cm-subbtn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.cm-sub-panel{display:none}
+.cm-sub-panel.active{display:block}
+.cm-sub-ctrl{display:none}
+.cm-sub-ctrl.active{display:block}
+@media(max-width:720px){.cm-subnav{gap:4px}.cm-subbtn{font-size:10px;padding:4px 7px}}
 
 /* ================================================================
    MODULO 1 - ENSAYO DESTRUCTIVO (tab 'destructivo') — mismo patrón que el módulo de ensayo no destructivo

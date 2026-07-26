@@ -26,6 +26,10 @@ dzInit();
 frInit();
 ftInit();
 flInit();
+dsInit(); // FIX (v4.1): Desgaste (Archard), 1er ensayo de la pestaña "Ensayos complementarios"
+trInit(); // FIX (v4.2): Tensiones residuales (hole-drilling), 2do ensayo de esa pestaña
+crInit(); // FIX (v4.3): Corrosión (Faraday/ASTM G102), 3er ensayo de esa pestaña
+poInit(); // FIX (v4.4): Polímeros (curva DMA), 4to y último ensayo del Grupo A
 // FIX (Fase 10): progInit() va al final del bloque de init para restaurar
 // último material por selector y última pestaña activa DESPUÉS de que todos
 // los valores por defecto (applyPreset2, applyPresetComp0, dzInit, etc.) ya

@@ -57,6 +57,16 @@ const FICHA_SN_REF = { acero:'acero1045', aceroinox:'acero4340', aluminio:'al201
 // inventar una condición de carga nueva solo para la ficha.
 const FICHA_SN_SA_EJEMPLO = 200;
 
+// FIX (v4.7 — integración de Ficha con el Grupo A, pedido pendiente desde
+// v4.6): condiciones de ejemplo para Desgaste/Corrosión, mismo criterio que
+// FICHA_CREEP_EJEMPLO arriba -- valores por defecto de cada slider en la
+// pestaña interactiva (desgaste.js/corrosion.js), no inventados para la
+// ficha. Polímeros no necesita un objeto de ejemplo aparte: usa T=T_g del
+// propio material (ver más abajo, poEjemplo) porque el ancho por defecto de
+// la transición (10°C) sí es genérico y aplica igual a cualquier polímero.
+const FICHA_DESGASTE_EJEMPLO = { F: 50, d: 1000 }; // N, m -- default de ds_fuerza/ds_distancia
+const FICHA_CORROSION_EJEMPLO = { icorr: 5, t: 20 }; // µA/cm², años -- default de cr_icorr/cr_tiempo
+
 function openFichaPicker(){
   const opts = Object.keys(PRESETS).map(k => `<option value="${k}">${MATERIAL_LABELS[k]||k}</option>`).join('');
   document.getElementById('fichaBody').innerHTML = `
@@ -66,7 +76,7 @@ function openFichaPicker(){
         ${opts}
       </select>
     </div>
-    <div class="note">La ficha muestra tracción, dureza estimada y — cuando el material tiene esos datos cargados — fractura, fatiga y fluencia.</div>
+    <div class="note">La ficha muestra tracción, dureza estimada y — cuando el material tiene esos datos cargados — fractura, fatiga, fluencia, desgaste, corrosión y polímeros.</div>
     <div class="no-print" style="margin-top:12px">
       <button class="btn-primary" style="width:auto;padding:8px 20px" onclick="renderFichaMaterial()">Generar ficha</button>
     </div>`;
@@ -197,6 +207,105 @@ function renderFichaMaterial(){
     </div>`;
   }
 
+  // FIX (v4.7 — integración Ficha ↔ Grupo A): mismo criterio que fractSeccion
+  // arriba (dato real > "no disponible", nunca inventado) y que compData/
+  // fichaMedidoDureza (Fase 5c/7b: si la pestaña del ensayo tiene cargado
+  // AHORA MISMO este mismo material -- vía el keyMap de material-sync.js --
+  // se leen sus sliders en vivo en vez de la condición de ejemplo fija).
+  // CR_KEY_MAP/PO_KEY_MAP/DS_KEY_MAP viven en material-sync.js (Fase de
+  // sync, v4.6) -- se reusan tal cual, no se duplican acá. material-sync.js
+  // carga después que ficha.js en el <script> del final del documento, pero
+  // eso no importa: esta función recién se ejecuta cuando el alumno hace
+  // click en "Generar ficha", momento en el que todos los scripts ya
+  // terminaron de cargar.
+  const dsLocal = (typeof DS_KEY_MAP !== 'undefined') ? DS_KEY_MAP[key] : undefined;
+  const dsPar = dsLocal ? DS_K_TABLE[dsLocal] : null;
+  let dsLive = null;
+  if (dsPar) {
+    const dsSelEl = document.getElementById('ds_par');
+    if (dsSelEl && dsSelEl.value === dsLocal) {
+      dsLive = {
+        F: parseFloat(document.getElementById('ds_fuerza').value) || 0,
+        d: parseFloat(document.getElementById('ds_distancia').value) || 0,
+        H: parseFloat(document.getElementById('ds_dureza').value) || dsPar.hb,
+      };
+    }
+  }
+  const dsEjemplo = dsLive || { F: FICHA_DESGASTE_EJEMPLO.F, d: FICHA_DESGASTE_EJEMPLO.d, H: dsPar?.hb };
+  const dsVol = dsPar ? dsCalcVolumen(dsPar.k, dsEjemplo.F, dsEjemplo.d, dsEjemplo.H * 9.80665e6) : null;
+
+  const crLocal = (typeof CR_KEY_MAP !== 'undefined') ? CR_KEY_MAP[key] : undefined;
+  const crMetal = crLocal ? CR_METAL_TABLE[crLocal] : null;
+  let crLive = null;
+  if (crMetal) {
+    const crSelEl = document.getElementById('cr_metal');
+    if (crSelEl && crSelEl.value === crLocal) {
+      crLive = {
+        icorr: parseFloat(document.getElementById('cr_icorr').value) || 0,
+        t: parseFloat(document.getElementById('cr_tiempo').value) || 0,
+      };
+    }
+  }
+  const crEjemplo = crLive || FICHA_CORROSION_EJEMPLO;
+  const crVel = crMetal ? crCalcVelocidad(crEjemplo.icorr, crMetal.ew, crMetal.rho) : null;
+
+  const poLocal = (typeof PO_KEY_MAP !== 'undefined') ? PO_KEY_MAP[key] : undefined;
+  const poPol = poLocal ? PO_POLIMERO_TABLE[poLocal] : null;
+  let poLive = null;
+  if (poPol) {
+    const poSelEl = document.getElementById('po_polimero');
+    if (poSelEl && poSelEl.value === poLocal) {
+      poLive = {
+        T: parseFloat(document.getElementById('po_temp').value) || poPol.tg,
+        w: parseFloat(document.getElementById('po_ancho').value) || 10,
+      };
+    }
+  }
+  // Sin lectura en vivo, se muestra E' en T=T_g (mitad de camino en la
+  // transición vítrea) -- es el único punto de la curva que no depende de
+  // ninguna condición ajena al material mismo, a diferencia de Desgaste/
+  // Corrosión que sí necesitan una condición externa (F/d, i_corr/tiempo).
+  const poEjemplo = poLive || { T: poPol?.tg, w: 10 };
+  const poMod = poPol ? poCalcModulo(poEjemplo.T, poPol.tg, poPol.eg, poPol.er, poEjemplo.w) : null;
+
+  const grupoAFaltantes = [!dsPar && 'Desgaste', !crMetal && 'Corrosión', !poPol && 'Polímeros'].filter(Boolean);
+  let grupoASeccion;
+  if (dsPar || crMetal || poPol) {
+    grupoASeccion = `
+    <div class="ficha-sec ficha-full">
+      <h3>Ensayos complementarios (Grupo A)</h3>
+      ${dsPar ? `
+      <div class="ficha-row"><span class="fk">Desgaste — par ensayado</span><span class="fv">${DS_K_TABLE[dsLocal].label}</span></div>
+      <div class="ficha-row"><span class="fk">Coeficiente de Archard k</span><span class="fv">${dsPar.k.toExponential(1)}</span></div>
+      <div class="ficha-row"><span class="fk">Volumen desgastado (F=${dsEjemplo.F} N, d=${dsEjemplo.d} m, H=${dsEjemplo.H} HB)</span><span class="fv">${isFinite(dsVol) ? (dsVol*1e9).toExponential(2)+' mm³' : '—'}</span></div>
+      ${dsLive ? `<div class="note" style="margin-top:2px">Condición tomada de lo que tenés cargado ahora mismo en Desgaste (con este mismo par seleccionado ahí).</div>` : ''}` : ''}
+      ${crMetal ? `
+      <div class="ficha-row"><span class="fk">Corrosión — metal</span><span class="fv">${crMetal.label}</span></div>
+      <div class="ficha-row"><span class="fk">Velocidad de corrosión (i_corr=${crEjemplo.icorr} µA/cm²)</span><span class="fv">${crVel.toFixed(3)} mm/año</span></div>
+      <div class="ficha-row"><span class="fk">Pérdida de espesor a ${crEjemplo.t} años</span><span class="fv">${(crVel*crEjemplo.t).toFixed(2)} mm</span></div>
+      ${crLive ? `<div class="note" style="margin-top:2px">Condición tomada de lo que tenés cargado ahora mismo en Corrosión (con este mismo metal seleccionado ahí).</div>` : ''}` : ''}
+      ${poPol ? `
+      <div class="ficha-row"><span class="fk">Polímero (DMA)</span><span class="fv">${poPol.label}</span></div>
+      <div class="ficha-row"><span class="fk">Temperatura de transición vítrea T_g</span><span class="fv">${poPol.tg} °C</span></div>
+      <div class="ficha-row"><span class="fk">E' a T=${poEjemplo.T}°C</span><span class="fv">${(poMod/1e6).toFixed(1)} MPa</span></div>
+      ${poLive ? `<div class="note" style="margin-top:2px">Condición tomada de lo que tenés cargado ahora mismo en Polímeros (con este mismo polímero seleccionado ahí).</div>` : ''}` : ''}
+      ${grupoAFaltantes.length ? `<div class="note" style="margin-top:6px">Sin datos de: ${grupoAFaltantes.join(', ')} — este material no tiene un equivalente real en esa tabla del simulador.</div>` : ''}
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px">
+        ${dsPar ? `<div style="flex:1;min-width:220px"><div class="note" style="margin:0 0 4px">Volumen desgastado vs. distancia</div><div class="ficha-mini" style="height:160px"><canvas id="fichaMatDesgasteChart"></canvas></div></div>` : ''}
+        ${crMetal ? `<div style="flex:1;min-width:220px"><div class="note" style="margin:0 0 4px">Pérdida de espesor vs. tiempo</div><div class="ficha-mini" style="height:160px"><canvas id="fichaMatCorrosionChart"></canvas></div></div>` : ''}
+        ${poPol ? `<div style="flex:1;min-width:220px"><div class="note" style="margin:0 0 4px">E' vs. temperatura</div><div class="ficha-mini" style="height:160px"><canvas id="fichaMatPolimerosChart"></canvas></div></div>` : ''}
+      </div>
+      <div class="note" style="margin-top:6px">Tensiones residuales (hole-drilling) no depende de un material específico — es una medición sobre cualquier pieza, con la constante de calibración de la roseta, no del material — por eso no aparece en esta ficha.</div>
+    </div>`;
+  } else {
+    grupoASeccion = `
+    <div class="ficha-sec ficha-full">
+      <h3>Ensayos complementarios (Grupo A)</h3>
+      <div class="note" style="margin-top:0">Este material no tiene un equivalente real en ninguna de las tablas de Desgaste, Corrosión o Polímeros del simulador.</div>
+    </div>`;
+  }
+
+
   document.getElementById('fichaBody').innerHTML = `
   <div class="ficha-header">
     <div>
@@ -251,6 +360,7 @@ function renderFichaMaterial(){
       <div class="ficha-mini"><canvas id="fichaMatTraccionChart"></canvas></div>
     </div>
     ${fractSeccion}
+    ${grupoASeccion}
   </div>
   <div class="no-print" style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
     <button class="btn-primary" style="width:auto;padding:8px 20px" onclick="printFicha()">⬇ Imprimir / Guardar PDF</button>
@@ -266,6 +376,14 @@ function renderFichaMaterial(){
   setTimeout(() => {
     const tCtx = document.getElementById('fichaMatTraccionChart')?.getContext('2d');
     if (tCtx) {
+      // FIX (QA v4.4 — hallazgo Etapa 1): sin este destroy(), seleccionar un
+      // material y volver a generar la ficha antes de que termine este mismo
+      // setTimeout (p.ej. clickeando rápido "Elegir otro material" varias
+      // veces seguidas) hacía que Chart.js rechazara crear el nuevo gráfico
+      // ("Canvas is already in use") y el mini-gráfico quedara en blanco --
+      // los datos numéricos de al lado sí se actualizaban, solo el gráfico
+      // no. Mismo criterio en los otros 4 canvas de esta ficha, más abajo.
+      Chart.getChart(tCtx.canvas)?.destroy();
       const [el_,pl,nk,fr] = splitPhases(pts);
       new Chart(tCtx,{type:'line',data:{datasets:[
         {data:el_,borderColor:'#2176ae',borderWidth:2,pointRadius:0,tension:0,fill:false},
@@ -280,6 +398,7 @@ function renderFichaMaterial(){
 
     const coCtx = document.getElementById('fichaMatCompChart')?.getContext('2d');
     if (coCtx && compData) {
+      Chart.getChart(coCtx.canvas)?.destroy();
       const compPts = genCompCurve(compData.E, compData.syc, compData.sc, compData.frag);
       new Chart(coCtx,{type:'line',data:{datasets:[{data:compPts, borderColor:'#7a3fb8', borderWidth:2, pointRadius:0, tension:0.15, fill:false}]},
         options:{responsive:true,maintainAspectRatio:false,animation:{duration:0},
@@ -295,6 +414,7 @@ function renderFichaMaterial(){
       const xMax = Math.max(ac*1.6, 2);
       const curva = []; const N=30;
       for(let i=0;i<=N;i++){ const x=xMax*i/N; curva.push({x, y:frCalcKi(Y, sigma, x)}); }
+      Chart.getChart(fCtx.canvas)?.destroy();
       new Chart(fCtx,{type:'line',data:{datasets:[
         {data:curva, borderColor:'#c43535', borderWidth:2, pointRadius:0, tension:0, fill:false},
         {data:[{x:0,y:frac.kic},{x:xMax,y:frac.kic}], borderColor:'#c8780a', borderDash:[5,4], borderWidth:1.5, pointRadius:0, fill:false}
@@ -308,6 +428,7 @@ function renderFichaMaterial(){
     if (paCtx) {
       const curva = []; const N=30;
       for(let i=0;i<=N;i++){ const dk = 2 + (60-2)*i/N; curva.push({x:dk, y:ftDadN(dk, frac.parisC, frac.parisM)}); }
+      Chart.getChart(paCtx.canvas)?.destroy();
       new Chart(paCtx,{type:'line',data:{datasets:[{data:curva, borderColor:'#1a5fa8', borderWidth:2, pointRadius:0, tension:0, fill:false}]},
         options:{responsive:true,maintainAspectRatio:false,animation:{duration:0},
         plugins:{legend:{display:false},tooltip:{enabled:false}},
@@ -321,11 +442,53 @@ function renderFichaMaterial(){
       const curva = []; const N=30;
       for(let i=0;i<=N;i++){ const tC = tMin + (tMax-tMin)*i/N; curva.push({x:1000/(tC+273.15), y:flEpsDot(frac, ejCreep.sigma, tC)}); }
       curva.sort((a,b)=>a.x-b.x);
+      Chart.getChart(flCtx.canvas)?.destroy();
       new Chart(flCtx,{type:'line',data:{datasets:[{data:curva, borderColor:'#1a5fa8', borderWidth:2, pointRadius:0, tension:0, fill:false}]},
         options:{responsive:true,maintainAspectRatio:false,animation:{duration:0},
         plugins:{legend:{display:false},tooltip:{enabled:false}},
         scales:{x:{type:'linear',title:{display:true,text:'1000/T (1/K)',color:tc,font:{size:10}},grid:{color:gc},ticks:{color:tc,maxTicksLimit:4}},
                 y:{type:'logarithmic',title:{display:true,text:'ε̇_s (1/h)',color:tc,font:{size:10}},grid:{color:gc},ticks:{color:tc,maxTicksLimit:4}}}}});
+    }
+
+    // FIX (v4.7 — Ficha ↔ Grupo A): mismo patrón de destroy()-antes-de-crear
+    // que los 4 canvas de arriba (ver comentario del fix de QA v4.4 en el
+    // primero de ellos) -- necesario acá también por la misma razón.
+    const dsCtx = document.getElementById('fichaMatDesgasteChart')?.getContext('2d');
+    if (dsCtx && dsPar) {
+      const Hpa = dsEjemplo.H * 9.80665e6;
+      const curva = []; const N=40;
+      for(let i=0;i<=N;i++){ const d = dsEjemplo.d*i/N; curva.push({x:d, y:dsCalcVolumen(dsPar.k, dsEjemplo.F, d, Hpa)*1e9}); }
+      Chart.getChart(dsCtx.canvas)?.destroy();
+      new Chart(dsCtx,{type:'line',data:{datasets:[{data:curva, borderColor:'#1a5fa8', borderWidth:2, pointRadius:0, tension:0, fill:false}]},
+        options:{responsive:true,maintainAspectRatio:false,animation:{duration:0},
+        plugins:{legend:{display:false},tooltip:{enabled:false}},
+        scales:{x:{type:'linear',title:{display:true,text:'d (m)',color:tc,font:{size:10}},grid:{color:gc},ticks:{color:tc,maxTicksLimit:4}},
+                y:{title:{display:true,text:'V (mm³)',color:tc,font:{size:10}},grid:{color:gc},ticks:{color:tc,maxTicksLimit:4}}}}});
+    }
+
+    const crCtx = document.getElementById('fichaMatCorrosionChart')?.getContext('2d');
+    if (crCtx && crMetal) {
+      const curva = []; const N=40;
+      for(let i=0;i<=N;i++){ const t = crEjemplo.t*i/N; curva.push({x:t, y:crVel*t}); }
+      Chart.getChart(crCtx.canvas)?.destroy();
+      new Chart(crCtx,{type:'line',data:{datasets:[{data:curva, borderColor:'#1a8a5f', borderWidth:2, pointRadius:0, tension:0, fill:false}]},
+        options:{responsive:true,maintainAspectRatio:false,animation:{duration:0},
+        plugins:{legend:{display:false},tooltip:{enabled:false}},
+        scales:{x:{type:'linear',title:{display:true,text:'t (años)',color:tc,font:{size:10}},grid:{color:gc},ticks:{color:tc,maxTicksLimit:4}},
+                y:{title:{display:true,text:'Pérdida (mm)',color:tc,font:{size:10}},grid:{color:gc},ticks:{color:tc,maxTicksLimit:4}}}}});
+    }
+
+    const poCtx = document.getElementById('fichaMatPolimerosChart')?.getContext('2d');
+    if (poCtx && poPol) {
+      const tMin = poPol.tg-80, tMax = poPol.tg+80;
+      const curva = []; const N=40;
+      for(let i=0;i<=N;i++){ const t = tMin+(tMax-tMin)*i/N; curva.push({x:t, y:poCalcModulo(t, poPol.tg, poPol.eg, poPol.er, poEjemplo.w)/1e6}); }
+      Chart.getChart(poCtx.canvas)?.destroy();
+      new Chart(poCtx,{type:'line',data:{datasets:[{data:curva, borderColor:'#7a3fa8', borderWidth:2, pointRadius:0, tension:0, fill:false}]},
+        options:{responsive:true,maintainAspectRatio:false,animation:{duration:0},
+        plugins:{legend:{display:false},tooltip:{enabled:false}},
+        scales:{x:{type:'linear',title:{display:true,text:'T (°C)',color:tc,font:{size:10}},grid:{color:gc},ticks:{color:tc,maxTicksLimit:4}},
+                y:{type:'logarithmic',title:{display:true,text:"E' (MPa)",color:tc,font:{size:10}},grid:{color:gc},ticks:{color:tc,maxTicksLimit:4}}}}});
     }
   }, 100);
 }

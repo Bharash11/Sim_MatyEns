@@ -196,10 +196,34 @@ function ftDadN(dk, C, m){
 }
 
 function ftUpdateVelocidad(){
-  const C = parseFloat(document.getElementById('ft_parisC').value)||1e-12;
-  const m = parseFloat(document.getElementById('ft_parisM').value)||3;
+  const CRaw = parseFloat(document.getElementById('ft_parisC').value);
+  const mRaw = parseFloat(document.getElementById('ft_parisM').value);
   const dk = parseFloat(document.getElementById('ft_dk').value)||1;
   document.getElementById('ft_dkVal').textContent = dk+' MPa·√m';
+
+  // FIX (QA v4.4 — hallazgo Etapa 4): C y m son campos de texto libre sin
+  // validar -- un C o un m negativo tipeado a mano no daba NaN (da/dN sigue
+  // siendo un número finito), sino un resultado numéricamente válido pero
+  // físicamente imposible: una velocidad de propagación de grieta negativa
+  // (la grieta "encogería" con cada ciclo de carga). Mismo criterio que
+  // rt_mecaWarn (FIX #36) y fl_lmWarn (FIX #37): se valida antes de calcular
+  // en vez de mostrar un resultado sin sentido sin avisar.
+  const warnEl = document.getElementById('ft_parisWarn');
+  const validC = isFinite(CRaw) && CRaw>0;
+  const validM = isFinite(mRaw) && mRaw>0;
+  if(!validC || !validM){
+    document.getElementById('ft_mDadn').textContent = '—';
+    warnEl.style.display = 'block';
+    warnEl.innerHTML = 'La constante C y el exponente m deben ser números positivos mayores que cero (una velocidad de propagación de grieta no puede ser negativa).';
+    if(ftParisChartInst){
+      ftParisChartInst.data.datasets[0].data = [];
+      ftParisChartInst.data.datasets[1].data = [];
+      ftParisChartInst.update();
+    }
+    return;
+  }
+  warnEl.style.display = 'none';
+  const C = CRaw, m = mRaw;
 
   const dadn = ftDadN(dk, C, m);
   document.getElementById('ft_mDadn').textContent = dadn.toExponential(2);
@@ -230,7 +254,7 @@ function ftInitFactoresChart(){
 }
 
 function ftUpdateFactores(){
-  const seBase = parseFloat(document.getElementById('ft_seBase').value)||1;
+  const seBaseRaw = parseFloat(document.getElementById('ft_seBase').value);
   const ka = parseFloat(document.getElementById('ft_ka').value)||1;
   const kb = parseFloat(document.getElementById('ft_kb').value)||1;
   const kc = parseFloat(document.getElementById('ft_kc').value)||1;
@@ -238,6 +262,27 @@ function ftUpdateFactores(){
   const ke = parseFloat(document.getElementById('ft_ke').value)||1;
   document.getElementById('ft_kbVal').textContent = kb.toFixed(2);
   document.getElementById('ft_kdVal').textContent = kd.toFixed(2)+(kd>=0.99?' (T ambiente)':' (alta T)');
+
+  // FIX (QA v4.4 — hallazgo Etapa 4): Se' es el único campo de texto libre
+  // de esta sección (k_a..k_e son slider/select, ya a salvo por
+  // construcción) -- un Se' negativo tipeado a mano daba un "límite de
+  // fatiga" final negativo, sin sentido físico, sin ningún aviso. Mismo
+  // criterio que ftUpdateVelocidad de arriba.
+  const warnEl = document.getElementById('ft_marinWarn');
+  const validSeBase = isFinite(seBaseRaw) && seBaseRaw>0;
+  if(!validSeBase){
+    document.getElementById('ft_mSe').textContent = '—';
+    document.getElementById('ft_mReduccion').textContent = '—';
+    warnEl.style.display = 'block';
+    warnEl.innerHTML = 'El límite de fatiga base Se\' debe ser un número positivo mayor que cero.';
+    if(ftFactoresChartInst){
+      ftFactoresChartInst.data.datasets[0].data = [];
+      ftFactoresChartInst.update();
+    }
+    return;
+  }
+  warnEl.style.display = 'none';
+  const seBase = seBaseRaw;
 
   const factorTotal = ka*kb*kc*kd*ke;
   const se = seBase*factorTotal;

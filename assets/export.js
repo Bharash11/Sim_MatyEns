@@ -55,3 +55,16 @@ function exportTsChart(){
   if (typeof progRegistrar === 'function') progRegistrar('export', { archivo: 'correlacion_ts_hb.png' });
 }
 
+// FIX (v4.1): mismo criterio que exportRoturaChart -- la pestaña "Ensayos
+// complementarios" va a ir sumando un ensayo (cm-sub-panel) por vez, así que
+// una sola función genérica que exporta el canvas del panel activo evita
+// escribir una exportXChart() nueva por cada ensayo que se agregue después.
+function exportComplementariosChart(filename){
+  const panel = document.querySelector('.cm-sub-panel.active');
+  const canvas = panel ? panel.querySelector('canvas') : null;
+  if (!canvas) return;
+  const url = canvas.toDataURL('image/png');
+  const a = document.createElement('a'); a.href=url; a.download=filename; a.click();
+  if (typeof progRegistrar === 'function') progRegistrar('export', { archivo: filename });
+}
+

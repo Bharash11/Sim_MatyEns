@@ -275,19 +275,30 @@ const testSuite = [
     // apenas se abriera el panel de tests. Ahora cuenta las 3 pestañas reales
     // y también valida las 15 subsecciones de la Unidad 3 (rt-subbtn), igual
     // que ya se hacía con las otras dos pestañas.
-    name: 'Tabs — 3 tabs, 3 páginas, 6+8+15 subsecciones',
+    // FIX (v4.0): se agregó la 4ta pestaña "Ensayos complementarios" (esqueleto
+    // vacío, todavía sin ensayos). Actualizamos el conteo de tabs/pages a 4 ANTES
+    // de que se agregue el primer ensayo -- la vez pasada (v3.4) este test se
+    // rompió justamente por dejarlo desactualizado cuando se sumó la 3ra pestaña.
+    // FIX (v4.1): primer ensayo de esa pestaña (Desgaste/Archard) -- se agrega el
+    // conteo de cm-subbtn (1 por ahora, va a subir a 4 con el resto del Grupo A).
+    // FIX (v4.4): 4to y último ensayo del Grupo A (Polímeros/curva DMA) -- cierra
+    // por ahora el Grupo A completo: cm-subbtn queda en 4 hasta que arranque el
+    // Grupo B (Metalografía/Voronoi) en una fase futura.
+    name: 'Tabs — 4 tabs, 4 páginas, 6+8+15+4 subsecciones',
     run: () => {
       const tabs  = document.querySelectorAll('.tab').length;
       const pages = document.querySelectorAll('.page').length;
       const edSubs = document.querySelectorAll('.ed-subbtn').length;
       const dzSubs = document.querySelectorAll('.dz-subbtn').length;
       const rtSubs = document.querySelectorAll('.rt-subbtn').length;
-      if (tabs !== 3)   return { ok: false, msg: `Tabs: ${tabs} (esperado 3)` };
-      if (pages !== 3)  return { ok: false, msg: `Pages: ${pages} (esperado 3)` };
+      const cmSubs = document.querySelectorAll('.cm-subbtn').length;
+      if (tabs !== 4)   return { ok: false, msg: `Tabs: ${tabs} (esperado 4)` };
+      if (pages !== 4)  return { ok: false, msg: `Pages: ${pages} (esperado 4)` };
       if (edSubs !== 6) return { ok: false, msg: `Subsecciones Ensayo destructivo: ${edSubs} (esperado 6)` };
       if (dzSubs !== 8) return { ok: false, msg: `Subsecciones Ensayo no destructivo: ${dzSubs} (esperado 8)` };
       if (rtSubs !== 15) return { ok: false, msg: `Subsecciones Fractura/fatiga/fluencia: ${rtSubs} (esperado 15)` };
-      return { ok: true, msg: `${tabs} tabs, ${pages} pages, ${edSubs}+${dzSubs}+${rtSubs} subsecciones ✓` };
+      if (cmSubs !== 4) return { ok: false, msg: `Subsecciones Ensayos complementarios: ${cmSubs} (esperado 4)` };
+      return { ok: true, msg: `${tabs} tabs, ${pages} pages, ${edSubs}+${dzSubs}+${rtSubs}+${cmSubs} subsecciones ✓` };
     }
   },
   // ---- RESPONSIVE ----
@@ -893,6 +904,79 @@ const testSuite = [
       return { ok: true, msg: 'Selector vacío: no hace nada y no rompe ✓' };
     }
   },
+  // FIX (v4.6 — integración Grupo A al sync): tests de los 3 nuevos targets
+  // con keyMap (cr_metal/po_polimero/ds_par) y de la exclusión de tr_cal.
+  // Mismo criterio de arriba: todo <select> tocado se restaura en un finally.
+  {
+    id: 'sync_grupoa_excluye_tr', group: 'Sincronización de material (Grupo A, v4.6)',
+    name: 'Registro de sync NO incluye tr_cal (geometría de roseta, no es un material)',
+    run: () => {
+      const ids = MATERIAL_SYNC_TARGETS.map(t => t.id);
+      if (ids.includes('tr_cal')) return { ok: false, msg: 'tr_cal está en el registro y no debería (no es un material, ver tensiones-residuales.js)' };
+      const incluye = ['cr_metal', 'po_polimero', 'ds_par'].every(id => ids.includes(id));
+      if (!incluye) return { ok: false, msg: 'Falta alguno de cr_metal/po_polimero/ds_par en el registro' };
+      return { ok: true, msg: 'tr_cal afuera, cr_metal/po_polimero/ds_par adentro ✓' };
+    }
+  },
+  {
+    id: 'sync_grupoa_desde_traccion', group: 'Sincronización de material (Grupo A, v4.6)',
+    name: 'syncMaterialToAllTests("e_preset") con "Acero" también llega a Corrosión (hierro) y Desgaste (aceroacero), no a Polímeros',
+    run: () => {
+      const ids = ['e_preset', 'cr_metal', 'po_polimero', 'ds_par'];
+      const originales = {}; ids.forEach(id => { const el = document.getElementById(id); originales[id] = el ? el.value : undefined; });
+      const errores = [];
+      try {
+        document.getElementById('e_preset').value = 'acero';
+        syncMaterialToAllTests('e_preset');
+        if (document.getElementById('cr_metal').value !== 'hierro') errores.push(`cr_metal quedó en "${document.getElementById('cr_metal').value}", esperaba "hierro"`);
+        if (document.getElementById('ds_par').value !== 'aceroacero') errores.push(`ds_par quedó en "${document.getElementById('ds_par').value}", esperaba "aceroacero"`);
+      } finally {
+        ids.forEach(id => { const el = document.getElementById(id); if (el && originales[id] !== undefined) el.value = originales[id]; });
+      }
+      if (errores.length) return { ok: false, msg: errores.join('; ') };
+      return { ok: true, msg: 'Acero → Corrosión (hierro) y Desgaste (aceroacero) via keyMap ✓' };
+    }
+  },
+  {
+    id: 'sync_grupoa_hacia_traccion', group: 'Sincronización de material (Grupo A, v4.6)',
+    name: 'syncMaterialToAllTests("cr_metal") con "Titanio (Ti)" traduce hacia atrás y llega a Tracción como "titanio"',
+    run: () => {
+      const ids = ['e_preset', 'cr_metal'];
+      const originales = {}; ids.forEach(id => { const el = document.getElementById(id); originales[id] = el ? el.value : undefined; });
+      const errores = [];
+      try {
+        document.getElementById('cr_metal').value = 'titanio';
+        syncMaterialToAllTests('cr_metal');
+        if (document.getElementById('e_preset').value !== 'titanio') errores.push(`e_preset quedó en "${document.getElementById('e_preset').value}", esperaba "titanio"`);
+      } finally {
+        ids.forEach(id => { const el = document.getElementById(id); if (el && originales[id] !== undefined) el.value = originales[id]; });
+      }
+      if (errores.length) return { ok: false, msg: errores.join('; ') };
+      return { ok: true, msg: 'cr_metal="titanio" traduce correctamente de vuelta a la clave PRESETS "titanio" ✓' };
+    }
+  },
+  {
+    id: 'sync_grupoa_parcial', group: 'Sincronización de material (Grupo A, v4.6)',
+    name: 'syncMaterialToAllTests — "Cobre" llega a Corrosión pero no a Desgaste ni Polímeros (sin equivalente real en esas tablas)',
+    run: () => {
+      const ids = ['e_preset', 'cr_metal', 'po_polimero', 'ds_par'];
+      const originales = {}; ids.forEach(id => { const el = document.getElementById(id); originales[id] = el ? el.value : undefined; });
+      const errores = [];
+      try {
+        document.getElementById('po_polimero').value = 'pmma'; // para confirmar que NO se pisa
+        document.getElementById('ds_par').value = 'ptfe'; // para confirmar que NO se pisa
+        document.getElementById('e_preset').value = 'cobre';
+        syncMaterialToAllTests('e_preset');
+        if (document.getElementById('cr_metal').value !== 'cobre') errores.push('cr_metal debería quedar en "cobre" (Corrosión sí tiene cobre)');
+        if (document.getElementById('po_polimero').value !== 'pmma') errores.push('po_polimero se pisó, pero "cobre" no tiene equivalente en la tabla de polímeros');
+        if (document.getElementById('ds_par').value !== 'ptfe') errores.push('ds_par se pisó, pero "cobre" no está en DS_KEY_MAP');
+      } finally {
+        ids.forEach(id => { const el = document.getElementById(id); if (el && originales[id] !== undefined) el.value = originales[id]; });
+      }
+      if (errores.length) return { ok: false, msg: errores.join('; ') };
+      return { ok: true, msg: 'Sync parcial correcto: Corrosión recibe "cobre", Desgaste/Polímeros quedan intactos ✓' };
+    }
+  },
   {
     id: 'ficha_dureza_cruzada', group: 'Ficha técnica (Fase 4)',
     name: 'Ficha — extiende la lectura cruzada de la Fase 5c (Compresión) a Dureza (Brinell/Vickers/Rockwell)',
@@ -929,6 +1013,105 @@ const testSuite = [
       if (!tieneMedidoCoincide) return { ok: false, msg: 'No mostró el HB medido en Brinell con el material coincidente' };
       if (!noTieneMedidoNoCoincide) return { ok: false, msg: 'Mostró HB medido con un material que no coincide con Brinell' };
       return { ok: true, msg: 'Lectura cruzada con Dureza (Brinell) correcta, mismo patrón que Compresión (Fase 5c) ✓' };
+    }
+  },
+  // FIX (v4.7 — integración Ficha ↔ Grupo A): tests de la nueva sección
+  // "Ensayos complementarios (Grupo A)" en la Ficha técnica. Mismo criterio
+  // de arriba (try/finally, restaurar el DOM) y mismo criterio de fondo que
+  // fractSeccion: material con dato real → se muestra calculado; sin
+  // equivalente real en la tabla del módulo → se lista en "Sin datos de".
+  {
+    id: 'ficha_grupoa_acero', group: 'Ficha técnica ↔ Grupo A (v4.7)',
+    name: 'Ficha de "Acero" muestra Desgaste y Corrosión (vía keyMap), no Polímeros',
+    run: () => {
+      let html = '';
+      try {
+        openFichaPicker();
+        document.getElementById('fichaMatSelect').value = 'acero';
+        renderFichaMaterial();
+        html = document.getElementById('fichaBody').innerHTML;
+      } finally {
+        closeFicha();
+      }
+      const errores = [];
+      if (!/Acero dulce – Acero dulce/.test(html)) errores.push('No mostró el par de Desgaste correspondiente a "acero" (aceroacero)');
+      if (!/Hierro \/ acero al carbono/.test(html)) errores.push('No mostró el metal de Corrosión correspondiente a "acero" (hierro)');
+      if (!/Sin datos de:[^<]*Polímeros/.test(html)) errores.push('Debería listar "Polímeros" en "Sin datos de" para acero (no tiene equivalente en PO_KEY_MAP)');
+      if (errores.length) return { ok: false, msg: errores.join('; ') };
+      return { ok: true, msg: 'Ficha de Acero: Desgaste/Corrosión calculados, Polímeros correctamente ausente ✓' };
+    }
+  },
+  {
+    id: 'ficha_grupoa_nylon', group: 'Ficha técnica ↔ Grupo A (v4.7)',
+    name: 'Ficha de "Nylon PA6" muestra solo Polímeros (nylon→nylon6), no Desgaste ni Corrosión',
+    run: () => {
+      let html = '';
+      try {
+        openFichaPicker();
+        document.getElementById('fichaMatSelect').value = 'nylon';
+        renderFichaMaterial();
+        html = document.getElementById('fichaBody').innerHTML;
+      } finally {
+        closeFicha();
+      }
+      const errores = [];
+      if (!/Nylon 6 \(poliamida, seco\)/.test(html)) errores.push('No mostró el polímero correspondiente a "nylon" (nylon6)');
+      if (!/Sin datos de:[^<]*Desgaste/.test(html)) errores.push('Debería listar "Desgaste" en "Sin datos de" para nylon');
+      if (!/Sin datos de:[^<]*Corrosión/.test(html)) errores.push('Debería listar "Corrosión" en "Sin datos de" para nylon');
+      if (errores.length) return { ok: false, msg: errores.join('; ') };
+      return { ok: true, msg: 'Ficha de Nylon: solo Polímeros calculado, Desgaste/Corrosión correctamente ausentes ✓' };
+    }
+  },
+  {
+    id: 'ficha_grupoa_sin_equivalente', group: 'Ficha técnica ↔ Grupo A (v4.7)',
+    name: 'Ficha de un material sin equivalente en ninguna tabla del Grupo A (ej. Cerámica) muestra el aviso genérico',
+    run: () => {
+      let html = '';
+      try {
+        openFichaPicker();
+        document.getElementById('fichaMatSelect').value = 'ceramica';
+        renderFichaMaterial();
+        html = document.getElementById('fichaBody').innerHTML;
+      } finally {
+        closeFicha();
+      }
+      if (!/no tiene un equivalente real en ninguna de las tablas de Desgaste, Corrosión o Polímeros/.test(html)) {
+        return { ok: false, msg: 'No mostró el aviso genérico de "sin equivalente" para un material sin datos de Grupo A' };
+      }
+      return { ok: true, msg: 'Aviso genérico correcto cuando ningún módulo del Grupo A aplica ✓' };
+    }
+  },
+  {
+    id: 'ficha_grupoa_lectura_viva', group: 'Ficha técnica ↔ Grupo A (v4.7)',
+    name: 'Ficha lee en vivo la fuerza/distancia cargadas en Desgaste cuando el par coincide',
+    // FIX (post-v4.7, reporte de Agus): el valor de prueba de ds_distancia
+    // tiene que ser múltiplo del step="10" del slider -- el navegador sanea
+    // (redondea) el valor asignado por JS al step más cercano, así que un
+    // valor como 4444 termina guardado como 4440 y el regex de abajo nunca
+    // matcheaba. No era un bug de ficha.js, era este test.
+    run: () => {
+      const parSel = document.getElementById('ds_par');
+      if (!parSel) return { warn: true, msg: 'No se encontró #ds_par (¿pestaña Ensayos complementarios no cargada en el DOM?)' };
+      const parOriginal = parSel.value;
+      const fOriginal = document.getElementById('ds_fuerza').value;
+      const dOriginal = document.getElementById('ds_distancia').value;
+      let html = '';
+      try {
+        parSel.value = 'aceroacero';
+        document.getElementById('ds_fuerza').value = '333';
+        document.getElementById('ds_distancia').value = '4440';
+        openFichaPicker();
+        document.getElementById('fichaMatSelect').value = 'acero';
+        renderFichaMaterial();
+        html = document.getElementById('fichaBody').innerHTML;
+      } finally {
+        parSel.value = parOriginal;
+        document.getElementById('ds_fuerza').value = fOriginal;
+        document.getElementById('ds_distancia').value = dOriginal;
+        closeFicha();
+      }
+      if (!/F=333 N, d=4440 m/.test(html)) return { ok: false, msg: 'No tomó F/d en vivo de la pestaña Desgaste con el mismo par cargado ahí' };
+      return { ok: true, msg: 'Lectura en vivo de Desgaste correcta (F=333 N, d=4440 m) ✓' };
     }
   },
   {
@@ -1059,6 +1242,259 @@ const testSuite = [
         localStorage.setItem = originalSetItem;
         PROG_DATA = prevData;
       }
+    }
+  },
+  // ---- DESGASTE (v4.1) ----
+  {
+    id: 'ds_calc_basico', group: 'Desgaste (Archard)',
+    name: 'dsCalcVolumen — caso de referencia (Wikipedia "Wear coefficient")',
+    run: () => {
+      // Acero dulce/acero dulce, HB=120 (→1.176e9 Pa), F=9.8N, d=1m, k=7e-3
+      // Resultado esperado del ejemplo de referencia: ≈5.83e-11 m³
+      const H_pa = 120 * 9.80665e6;
+      const V = dsCalcVolumen(7e-3, 9.8, 1, H_pa);
+      const esperado = 5.83e-11;
+      const err = Math.abs(V - esperado) / esperado;
+      if (err > 0.02) return { ok: false, msg: `V=${V.toExponential(3)} m³, esperado≈${esperado.toExponential(2)} m³ (err ${(err*100).toFixed(1)}%)` };
+      return { ok: true, msg: `V=${V.toExponential(3)} m³ ✓` };
+    }
+  },
+  {
+    id: 'ds_calc_proporcional', group: 'Desgaste (Archard)',
+    name: 'dsCalcVolumen — proporcionalidad directa con F y d, inversa con H',
+    run: () => {
+      const base = dsCalcVolumen(1e-3, 100, 500, 1e9);
+      const dobleF = dsCalcVolumen(1e-3, 200, 500, 1e9);
+      const dobleD = dsCalcVolumen(1e-3, 100, 1000, 1e9);
+      const dobleH = dsCalcVolumen(1e-3, 100, 500, 2e9);
+      if (Math.abs(dobleF - 2*base) > 1e-15) return { ok: false, msg: 'No es proporcional a F' };
+      if (Math.abs(dobleD - 2*base) > 1e-15) return { ok: false, msg: 'No es proporcional a d' };
+      if (Math.abs(dobleH - base/2) > 1e-15) return { ok: false, msg: 'No es inversamente proporcional a H' };
+      return { ok: true, msg: 'V ∝ F·d/H ✓' };
+    }
+  },
+  {
+    id: 'ds_calc_dureza_invalida', group: 'Desgaste (Archard)',
+    name: 'dsCalcVolumen — dureza cero o negativa devuelve NaN en vez de Infinity/valor engañoso',
+    run: () => {
+      const v0 = dsCalcVolumen(1e-3, 100, 500, 0);
+      const vNeg = dsCalcVolumen(1e-3, 100, 500, -10);
+      if (!Number.isNaN(v0)) return { ok: false, msg: `H=0 → ${v0} (esperado NaN)` };
+      if (!Number.isNaN(vNeg)) return { ok: false, msg: `H<0 → ${vNeg} (esperado NaN)` };
+      return { ok: true, msg: 'H≤0 → NaN en ambos casos ✓' };
+    }
+  },
+  {
+    id: 'ds_tabla_k_completa', group: 'Desgaste (Archard)',
+    name: 'DS_K_TABLE — 8 pares de materiales, todos con k>0',
+    run: () => {
+      const keys = Object.keys(DS_K_TABLE);
+      if (keys.length !== 8) return { ok: false, msg: `${keys.length} pares (esperados 8)` };
+      const malos = keys.filter(k => !(DS_K_TABLE[k].k > 0) || !(DS_K_TABLE[k].hb > 0));
+      if (malos.length) return { ok: false, msg: `Pares con k o hb inválido: ${malos.join(', ')}` };
+      return { ok: true, msg: '8 pares, todos con k>0 y hb>0 ✓' };
+    }
+  },
+  // ---- TENSIONES RESIDUALES / HOLE-DRILLING (v4.2) ----
+  {
+    id: 'tr_calc_referencia', group: 'Tensiones residuales (hole-drilling)',
+    name: 'trCalcTensiones — recupera el caso de calibración uniaxial de Vishay TN-503 (σc≈69 MPa)',
+    run: () => {
+      // ε1=-90µε, ε2=-25µε, ε3=39µε con A,B de la roseta Tipo A pasante (TN-503).
+      // Debería recuperar σ_max≈σc=68.9MPa (tolerancia amplia por redondeo de A,B
+      // a 2 cifras en la fuente), σ_min≈0 y β≈0° (uniaxial alineado con galga 1).
+      const cal = TR_CAL_TABLE.tipoA_pasante;
+      const r = trCalcTensiones(-90e-6, -25e-6, 39e-6, cal.A, cal.B);
+      const maxMPa = r.sigmaMax / 1e6, minMPa = r.sigmaMin / 1e6;
+      if (Math.abs(maxMPa - 68.9) > 5) return { ok: false, msg: `σ_max=${maxMPa.toFixed(1)} MPa, esperado≈68.9±5 MPa` };
+      if (Math.abs(minMPa) > 5) return { ok: false, msg: `σ_min=${minMPa.toFixed(1)} MPa, esperado≈0±5 MPa` };
+      if (Math.abs(r.betaDeg) > 5) return { ok: false, msg: `β=${r.betaDeg.toFixed(1)}°, esperado≈0±5°` };
+      return { ok: true, msg: `σ_max=${maxMPa.toFixed(1)} MPa, σ_min=${minMPa.toFixed(1)} MPa, β=${r.betaDeg.toFixed(1)}° ✓` };
+    }
+  },
+  {
+    id: 'tr_calc_equibiaxial', group: 'Tensiones residuales (hole-drilling)',
+    name: 'trCalcTensiones — tensión equibiaxial (ε1=ε2=ε3) da σ_max=σ_min sin componente de corte',
+    run: () => {
+      const cal = TR_CAL_TABLE.tipoA_pasante;
+      const r = trCalcTensiones(-50e-6, -50e-6, -50e-6, cal.A, cal.B);
+      const diff = Math.abs(r.sigmaMax - r.sigmaMin);
+      if (diff > 1) return { ok: false, msg: `σ_max-σ_min=${diff.toExponential(2)} Pa (esperado ≈0, caso equibiaxial)` };
+      return { ok: true, msg: `σ_max≈σ_min=${(r.sigmaMax/1e6).toFixed(1)} MPa ✓` };
+    }
+  },
+  {
+    id: 'tr_calc_sin_deformacion', group: 'Tensiones residuales (hole-drilling)',
+    name: 'trCalcTensiones — sin deformación relevada, tensión residual nula',
+    run: () => {
+      const cal = TR_CAL_TABLE.tipoA_pasante;
+      const r = trCalcTensiones(0, 0, 0, cal.A, cal.B);
+      if (Math.abs(r.sigmaMax) > 1e-6 || Math.abs(r.sigmaMin) > 1e-6) {
+        return { ok: false, msg: `σ_max=${r.sigmaMax}, σ_min=${r.sigmaMin} (esperado 0,0)` };
+      }
+      return { ok: true, msg: 'ε=0 → σ_max=σ_min=0 ✓' };
+    }
+  },
+  {
+    id: 'tr_tabla_cal', group: 'Tensiones residuales (hole-drilling)',
+    name: 'TR_CAL_TABLE — al menos 1 geometría con A y B negativos (según Vishay TN-503)',
+    run: () => {
+      const keys = Object.keys(TR_CAL_TABLE);
+      if (keys.length < 1) return { ok: false, msg: 'Sin geometrías cargadas' };
+      const malos = keys.filter(k => !(TR_CAL_TABLE[k].A < 0) || !(TR_CAL_TABLE[k].B < 0));
+      if (malos.length) return { ok: false, msg: `Geometrías con A o B no negativos: ${malos.join(', ')}` };
+      return { ok: true, msg: `${keys.length} geometría(s), A y B negativos ✓` };
+    }
+  },
+  // ---- CORROSIÓN / FARADAY (v4.3) ----
+  {
+    id: 'cr_calc_proporcional', group: 'Corrosión (Faraday)',
+    name: 'crCalcVelocidad — proporcional a i_corr y EW, inversa a la densidad',
+    run: () => {
+      const base = crCalcVelocidad(5, 30, 8);
+      const dobleI = crCalcVelocidad(10, 30, 8);
+      const dobleEW = crCalcVelocidad(5, 60, 8);
+      const dobleRho = crCalcVelocidad(5, 30, 16);
+      if (Math.abs(dobleI - 2 * base) > 1e-12) return { ok: false, msg: 'No es proporcional a i_corr' };
+      if (Math.abs(dobleEW - 2 * base) > 1e-12) return { ok: false, msg: 'No es proporcional a EW' };
+      if (Math.abs(dobleRho - base / 2) > 1e-12) return { ok: false, msg: 'No es inversamente proporcional a ρ' };
+      return { ok: true, msg: 'CR ∝ i_corr·EW/ρ ✓' };
+    }
+  },
+  {
+    id: 'cr_calc_orden_magnitud', group: 'Corrosión (Faraday)',
+    name: 'crCalcVelocidad — acero al carbono, i_corr=5µA/cm², da un orden de magnitud realista (µm a décimas de mm/año)',
+    run: () => {
+      const fe = CR_METAL_TABLE.hierro;
+      const CR = crCalcVelocidad(5, fe.ew, fe.rho);
+      // Corrosión atmosférica moderada de acero: decenas de µm/año, no nm ni cm.
+      if (CR < 0.005 || CR > 0.5) return { ok: false, msg: `CR=${CR.toFixed(4)} mm/año, fuera del rango físico esperado (0.005–0.5)` };
+      return { ok: true, msg: `CR=${CR.toFixed(4)} mm/año (${(CR*1000).toFixed(1)} µm/año) ✓` };
+    }
+  },
+  {
+    id: 'cr_calc_densidad_invalida', group: 'Corrosión (Faraday)',
+    name: 'crCalcVelocidad — densidad cero o negativa devuelve NaN',
+    run: () => {
+      const v0 = crCalcVelocidad(5, 30, 0);
+      const vNeg = crCalcVelocidad(5, 30, -1);
+      if (!Number.isNaN(v0)) return { ok: false, msg: `ρ=0 → ${v0} (esperado NaN)` };
+      if (!Number.isNaN(vNeg)) return { ok: false, msg: `ρ<0 → ${vNeg} (esperado NaN)` };
+      return { ok: true, msg: 'ρ≤0 → NaN en ambos casos ✓' };
+    }
+  },
+  {
+    id: 'cr_tabla_metales', group: 'Corrosión (Faraday)',
+    name: 'CR_METAL_TABLE — 7 metales, todos con EW y ρ positivos',
+    run: () => {
+      const keys = Object.keys(CR_METAL_TABLE);
+      if (keys.length !== 7) return { ok: false, msg: `${keys.length} metales (esperados 7)` };
+      const malos = keys.filter(k => !(CR_METAL_TABLE[k].ew > 0) || !(CR_METAL_TABLE[k].rho > 0));
+      if (malos.length) return { ok: false, msg: `Metales con EW o ρ inválido: ${malos.join(', ')}` };
+      return { ok: true, msg: '7 metales, todos con EW>0 y ρ>0 ✓' };
+    }
+  },
+  // ---- POLÍMEROS / CURVA DMA (v4.4, cierra el Grupo A) ----
+  {
+    id: 'po_calc_punto_medio', group: 'Polímeros (curva DMA)',
+    name: "poCalcModulo — en T=Tg, E' es exactamente el punto medio entre vítreo y gomoso",
+    run: () => {
+      const Eg = 3e9, Er = 5e6, Tg = 105, w = 10;
+      const Ep = poCalcModulo(Tg, Tg, Eg, Er, w);
+      const esperado = (Eg + Er) / 2;
+      if (Math.abs(Ep - esperado) > 1) return { ok: false, msg: `E'(Tg)=${Ep.toExponential(3)}, esperado ${esperado.toExponential(3)}` };
+      return { ok: true, msg: `E'(Tg)=${(Ep/1e6).toFixed(1)} MPa = punto medio ✓` };
+    }
+  },
+  {
+    id: 'po_calc_asintotas', group: 'Polímeros (curva DMA)',
+    name: "poCalcModulo — lejos de Tg, E' tiende al módulo vítreo o gomoso según corresponda",
+    run: () => {
+      const Eg = 3e9, Er = 5e6, Tg = 105, w = 10;
+      const lejosAbajo = poCalcModulo(Tg - 100, Tg, Eg, Er, w);
+      const lejosArriba = poCalcModulo(Tg + 100, Tg, Eg, Er, w);
+      if (Math.abs(lejosAbajo - Eg) / Eg > 0.01) return { ok: false, msg: `T≪Tg: E'=${lejosAbajo.toExponential(3)}, esperado≈Eg=${Eg.toExponential(2)}` };
+      if (Math.abs(lejosArriba - Er) / Er > 0.05) return { ok: false, msg: `T≫Tg: E'=${lejosArriba.toExponential(3)}, esperado≈Er=${Er.toExponential(2)}` };
+      return { ok: true, msg: 'T≪Tg → E_vítreo, T≫Tg → E_gomoso ✓' };
+    }
+  },
+  {
+    id: 'po_calc_ancho_invalido', group: 'Polímeros (curva DMA)',
+    name: "poCalcModulo — ancho de transición cero o negativo devuelve NaN",
+    run: () => {
+      const v0 = poCalcModulo(105, 105, 3e9, 5e6, 0);
+      const vNeg = poCalcModulo(105, 105, 3e9, 5e6, -5);
+      if (!Number.isNaN(v0)) return { ok: false, msg: `w=0 → ${v0} (esperado NaN)` };
+      if (!Number.isNaN(vNeg)) return { ok: false, msg: `w<0 → ${vNeg} (esperado NaN)` };
+      return { ok: true, msg: 'w≤0 → NaN en ambos casos ✓' };
+    }
+  },
+  {
+    id: 'po_tabla_polimeros', group: 'Polímeros (curva DMA)',
+    name: 'PO_POLIMERO_TABLE — 7 polímeros, todos con E_vítreo > E_gomoso > 0',
+    run: () => {
+      const keys = Object.keys(PO_POLIMERO_TABLE);
+      if (keys.length !== 7) return { ok: false, msg: `${keys.length} polímeros (esperados 7)` };
+      const malos = keys.filter(k => !(PO_POLIMERO_TABLE[k].eg > PO_POLIMERO_TABLE[k].er) || !(PO_POLIMERO_TABLE[k].er > 0));
+      if (malos.length) return { ok: false, msg: `Polímeros con eg≤er o er≤0: ${malos.join(', ')}` };
+      return { ok: true, msg: '7 polímeros, todos con E_vítreo > E_gomoso > 0 ✓' };
+    }
+  },
+  // FIX (v4.7 — botones de ayuda + minitexto de fórmula en el Grupo A): los 4
+  // módulos (Desgaste, Tensiones residuales, Corrosión, Polímeros) se armaron
+  // en v4.1-v4.4 sin botón de ayuda en sus inputs -- quedó pendiente hasta
+  // ahora. El primer test es una comprobación GENERAL (no específica del
+  // Grupo A): cualquier botón .help-btn en el DOM, sea de la fase que sea,
+  // tiene que apuntar a una clave real de HELP_DATA -- barata de mantener y
+  // atrapa errores de tipeo en cualquier módulo futuro, no solo este.
+  {
+    id: 'help_data_cobertura', group: 'Ayuda contextual (v4.7)',
+    name: 'Todo botón de ayuda (?) del DOM tiene su entrada correspondiente en HELP_DATA',
+    run: () => {
+      const botones = document.querySelectorAll('.help-btn');
+      if (!botones.length) return { warn: true, msg: 'No se encontraron botones .help-btn en el DOM' };
+      const faltantes = new Set();
+      botones.forEach(b => {
+        const m = (b.getAttribute('onclick') || '').match(/showHelp\('([^']+)'/);
+        if (m && !HELP_DATA[m[1]]) faltantes.add(m[1]);
+      });
+      if (faltantes.size) return { ok: false, msg: `Faltan en HELP_DATA: ${Array.from(faltantes).join(', ')}` };
+      return { ok: true, msg: `${botones.length} botones de ayuda, todos con entrada en HELP_DATA ✓` };
+    }
+  },
+  {
+    id: 'help_grupoa_presente', group: 'Ayuda contextual (v4.7)',
+    name: 'Los 14 inputs del sidebar del Grupo A tienen botón de ayuda',
+    run: () => {
+      const ids = ['ds_par','ds_fuerza','ds_distancia','ds_dureza','tr_cal','tr_e1','tr_e2','tr_e3','cr_metal','cr_icorr','cr_tiempo','po_polimero','po_temp','po_ancho'];
+      const faltantes = ids.filter(id => {
+        const el = document.getElementById(id);
+        if (!el) return true; // sin selector en el DOM = falla igual
+        const label = el.closest('.field')?.querySelector('label');
+        return !label || !label.querySelector('.help-btn');
+      });
+      if (faltantes.length) return { ok: false, msg: `Sin botón de ayuda: ${faltantes.join(', ')}` };
+      return { ok: true, msg: '14/14 inputs del Grupo A tienen botón de ayuda ✓' };
+    }
+  },
+  {
+    id: 'formula_mini_grupoa', group: 'Ayuda contextual (v4.7)',
+    name: 'Los 4 paneles del Grupo A muestran el minitexto de fórmula (.formula-mini)',
+    run: () => {
+      const panelesEsperados = {
+        cm_panel_desgaste: 'V = k',
+        cm_panel_tensiones: 'σ_max,min',
+        cm_panel_corrosion: 'CR = K₁',
+        cm_panel_polimeros: "E'(T)",
+      };
+      const faltantes = [];
+      Object.entries(panelesEsperados).forEach(([panelId, esperado]) => {
+        const panel = document.getElementById(panelId);
+        const f = panel && panel.querySelector('.formula-mini');
+        if (!f || !f.textContent.includes(esperado)) faltantes.push(panelId);
+      });
+      if (faltantes.length) return { ok: false, msg: `Sin minitexto de fórmula esperado en: ${faltantes.join(', ')}` };
+      return { ok: true, msg: 'Minitexto de fórmula presente en los 4 paneles del Grupo A ✓' };
     }
   },
 ];

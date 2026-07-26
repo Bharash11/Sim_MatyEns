@@ -162,7 +162,7 @@ function flLarsonMillerTr(LMP, T_K, C){
 }
 
 function flUpdateExtrapolacion(){
-  const C = parseFloat(document.getElementById('fl_lmC').value)||20;
+  const CRaw = parseFloat(document.getElementById('fl_lmC').value);
   const TtestRaw = parseFloat(document.getElementById('fl_ttest').value);
   const trTestRaw = parseFloat(document.getElementById('fl_trtest').value);
   const Tserv = parseFloat(document.getElementById('fl_tserv').value)||0;
@@ -182,15 +182,28 @@ function flUpdateExtrapolacion(){
   // antes de calcular, en vez de dejar que el NaN llegue a pantalla.
   const warnEl = document.getElementById('fl_lmWarn');
   const validTrTest = isFinite(trTestRaw) && trTestRaw>0;
+  // FIX (QA v4.5 — hallazgo Etapa 4/9, bug #5): a diferencia de trTest y de
+  // Ttest, la constante C no tenía ninguna validación -- 0, un negativo o el
+  // campo vacío no daban NaN ni "Infinity" (el signo/magnitud de C no rompe
+  // la cuenta matemáticamente), pero sí un resultado con apariencia válida
+  // calculado a partir de un dato sin sentido físico (C suele estar entre
+  // 15 y 30 para metales). Mismo criterio que ya se usa para trTest: se
+  // valida antes de calcular en vez de mostrarlo sin avisar.
+  const validC = isFinite(CRaw) && CRaw>0;
+  const C = validC ? CRaw : 20;
   const Ttest = Math.max(-273.15, isFinite(TtestRaw)?TtestRaw:0);
   const clampeoAplicado = isFinite(TtestRaw) && TtestRaw < -273.15;
 
-  if(!validTrTest){
+  if(!validTrTest || !validC){
     document.getElementById('fl_mLMP').textContent = '—';
     document.getElementById('fl_mTrServ').textContent = '—';
     document.getElementById('fl_mTrServAnios').textContent = '—';
     warnEl.style.display = 'block';
-    warnEl.innerHTML = 'El tiempo a rotura del ensayo de referencia debe ser un número positivo mayor que cero.';
+    warnEl.innerHTML = (!validTrTest && !validC)
+      ? 'El tiempo a rotura del ensayo de referencia y la constante C deben ser números positivos mayores que cero.'
+      : !validTrTest
+        ? 'El tiempo a rotura del ensayo de referencia debe ser un número positivo mayor que cero.'
+        : 'La constante C de Larson-Miller debe ser un número positivo mayor que cero (típicamente entre 15 y 30 para metales).';
     if(flLmChartInst){
       flLmChartInst.data.datasets[0].data = [];
       flLmChartInst.data.datasets[1].data = [];

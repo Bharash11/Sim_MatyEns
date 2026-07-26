@@ -4,7 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- v3.1: agregado tab "Fractura, fatiga y fluencia" completo (Fractura, Fatiga y Fluencia en caliente con todos sus subtemas) -->
-<title>Simulador de Ensayos Mecánicos 3.17 — Materiales y Ensayos</title>
+<title>Simulador de Ensayos Mecánicos 4.8 — Materiales y Ensayos</title>
+<!-- FIX v4.8: PWA -- manifest + íconos + service worker (instalable y usable offline) -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1a5fa8">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/icons/icon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="assets/icons/icon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/icons/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Sim MatyEns">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link rel="stylesheet" href="assets/styles.css">
 </head>
@@ -13,7 +22,7 @@
 
 <header>
   <h1>Simulador de Ensayos</h1>
-  <span class="ver" id="verBadge" onclick="handleVerBadgeClick()" style="cursor:default;user-select:none">3.17</span>
+  <span class="ver" id="verBadge" onclick="handleVerBadgeClick()" style="cursor:default;user-select:none">4.8</span>
   <span class="subtitle">Materiales y Ensayos</span>
   <button id="fichaHeaderBtn" onclick="openFichaPicker()" style="background:var(--accent);color:#fff;border:none;border-radius:var(--radius);padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;margin-left:auto">📋 Ficha técnica</button>
   <button id="progresoHeaderBtn" onclick="abrirProgreso()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer">📈 Mi progreso</button>
@@ -25,6 +34,10 @@
   <button class="tab active" onclick="switchTab('destructivo',this)">Ensayo destructivo</button>
   <button class="tab" onclick="switchTab('dureza',this)">Ensayo no destructivo</button>
   <button class="tab" onclick="switchTab('rotura',this)">Fractura, fatiga y fluencia</button>
+  <!-- FIX v4.0: 4ta pestaña principal, esqueleto vacío -- aloja en conversaciones
+       futuras los ensayos del Grupo A (Desgaste, Tensiones residuales, Corrosión,
+       Polímeros) + Metalografía. Sin ensayos todavía; ver "próximamente" abajo. -->
+  <button class="tab" onclick="switchTab('complementarios',this)">Ensayos complementarios</button>
 </div>
 
 <!-- ================================================================ TAB 1: ENSAYO DESTRUCTIVO -->
@@ -1177,6 +1190,7 @@
       <div class="field"><label>ΔK actual (MPa·√m)</label>
         <input type="range" id="ft_dk" value="15" min="2" max="60" step="0.5" oninput="ftUpdateVelocidad()">
         <div class="note" style="margin-top:2px" id="ft_dkVal">15 MPa·√m</div></div>
+      <div class="info-bar" id="ft_parisWarn" style="display:none;margin-top:8px;border-left-color:var(--neck)"></div>
       <button class="btn-secondary" onclick="exportRoturaChart('ley_de_paris.png')">⬇ Exportar imagen</button>
     </div>
 
@@ -1211,6 +1225,7 @@
           <option value="0.814">99% (k_e=0.814)</option>
           <option value="0.753">99.9% (k_e=0.753)</option>
         </select></div>
+      <div class="info-bar" id="ft_marinWarn" style="display:none;margin-top:8px;border-left-color:var(--neck)"></div>
       <button class="btn-secondary" onclick="exportRoturaChart('factores_marin.png')">⬇ Exportar imagen</button>
     </div>
 
@@ -1576,6 +1591,224 @@
   </main>
 </div>
 
+<!-- FIX v4.0: 4ta pestaña principal "Ensayos complementarios" -- mismo patrón
+     (aside.sidebar + main.main) que las otras 3 pestañas.
+     FIX (v4.1): primer ensayo real, Desgaste/tribología (ley de Archard). Se agrega
+     acá la infraestructura de sub-nav (cm-subnav/cm-subbtn, cmSwitch en desgaste.js)
+     que en v4.0 todavía no hacía falta -- los próximos ensayos del Grupo A (tensiones
+     residuales, corrosión, polímeros) van a sumar un botón + sec/panel cada uno,
+     reusando esta misma infraestructura sin tocarla. -->
+<div class="page" id="tab-complementarios">
+  <aside class="sidebar">
+<div style="display:flex;justify-content:flex-end;margin-bottom:8px;"><button class="drawer-close-btn" onclick="closeSidebar()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted);padding:4px 8px;line-height:1">✕</button></div>
+
+    <div class="sec">
+      <div class="sec-title">Ensayos complementarios</div>
+      <div class="note" style="margin-top:0">Desgaste, tensiones residuales, corrosión, ensayos de polímeros y metalografía. Se van sumando de a un ensayo por vez.</div>
+    </div>
+
+    <div class="sec cm-sub-ctrl active" id="cm_ctrl_desgaste">
+      <div class="sec-title">1. Desgaste (ley de Archard)</div>
+      <div class="field"><label>Par de materiales<button type="button" class="help-btn" onclick="showHelp('ds_par',event)">?</button></label>
+        <select id="ds_par" onchange="dsSetPar()">
+          <option value="polietileno">Polietileno – Acero</option>
+          <option value="pmma">PMMA (acrílico) – Acero</option>
+          <option value="inoxferr">Acero inoxidable ferrítico – Acero</option>
+          <option value="ptfe">PTFE (teflón) – Acero</option>
+          <option value="cube">Cobre-berilio – Acero</option>
+          <option value="toolsteel">Acero de herramienta templado – Acero</option>
+          <option value="laton">Latón (α/β) – Acero</option>
+          <option value="aceroacero" selected>Acero dulce – Acero dulce</option>
+        </select>
+        <button type="button" class="btn-sync" onclick="syncMaterialToAllTests('ds_par')" title="Aplica el material elegido acá también en el resto de las pestañas que lo tengan disponible (solo para los pares con un componente real de la tabla general de materiales)">🔗 Aplicar a todos los ensayos</button>
+      </div>
+      <div class="field"><label>Fuerza normal <code>F</code> (N)<button type="button" class="help-btn" onclick="showHelp('ds_fuerza',event)">?</button></label>
+        <input type="range" id="ds_fuerza" value="50" min="1" max="500" step="1" oninput="dsUpdate()">
+        <div class="note" style="margin-top:2px" id="ds_fuerzaVal">50 N</div></div>
+      <div class="field"><label>Distancia recorrida <code>d</code> (m)<button type="button" class="help-btn" onclick="showHelp('ds_distancia',event)">?</button></label>
+        <input type="range" id="ds_distancia" value="1000" min="10" max="10000" step="10" oninput="dsUpdate()">
+        <div class="note" style="margin-top:2px" id="ds_distanciaVal">1000 m</div></div>
+      <div class="field"><label>Dureza <code>H</code> (HB)<button type="button" class="help-btn" onclick="showHelp('ds_dureza',event)">?</button></label>
+        <input type="range" id="ds_dureza" value="120" min="2" max="700" step="1" oninput="dsUpdate()">
+        <div class="note" style="margin-top:2px" id="ds_durezaVal">120 HB</div></div>
+      <div class="note">Coeficientes <code>k</code> de la tabla: Archard &amp; Hirst (1956), ensayos sin lubricar contra disco de acero. La dureza es un valor típico de partida, ajustable.</div>
+      <button class="btn-secondary" onclick="exportComplementariosChart('desgaste_archard.png')">⬇ Exportar imagen</button>
+    </div>
+
+    <div class="sec cm-sub-ctrl" id="cm_ctrl_tensiones">
+      <div class="sec-title">2. Tensiones residuales (hole-drilling)</div>
+      <div class="field"><label>Roseta / calibración<button type="button" class="help-btn" onclick="showHelp('tr_cal',event)">?</button></label>
+        <select id="tr_cal" onchange="trUpdate()">
+          <option value="tipoA_pasante">Roseta Tipo A (062RE/UL) — pasante, D₀/D=0,35</option>
+        </select></div>
+      <div class="field"><label>Deformación <code>ε₁</code> (galga a 0°, µε)<button type="button" class="help-btn" onclick="showHelp('tr_e1',event)">?</button></label>
+        <input type="range" id="tr_e1" value="-90" min="-500" max="500" step="1" oninput="trUpdate()">
+        <div class="note" style="margin-top:2px" id="tr_e1Val">-90 µε</div></div>
+      <div class="field"><label>Deformación <code>ε₂</code> (galga a 45°, µε)<button type="button" class="help-btn" onclick="showHelp('tr_e2',event)">?</button></label>
+        <input type="range" id="tr_e2" value="-25" min="-500" max="500" step="1" oninput="trUpdate()">
+        <div class="note" style="margin-top:2px" id="tr_e2Val">-25 µε</div></div>
+      <div class="field"><label>Deformación <code>ε₃</code> (galga a 90°, µε)<button type="button" class="help-btn" onclick="showHelp('tr_e3',event)">?</button></label>
+        <input type="range" id="tr_e3" value="39" min="-500" max="500" step="1" oninput="trUpdate()">
+        <div class="note" style="margin-top:2px" id="tr_e3Val">39 µε</div></div>
+      <div class="note">Constantes A, B: Vishay Measurements Group, Tech Note TN-503 (calibración experimental, acero inoxidable AISI 304). Por ahora solo esta geometría — ver comentario en tensiones-residuales.js.</div>
+      <button class="btn-secondary" onclick="exportComplementariosChart('tensiones_residuales.png')">⬇ Exportar imagen</button>
+    </div>
+
+    <div class="sec cm-sub-ctrl" id="cm_ctrl_corrosion">
+      <div class="sec-title">3. Corrosión (ley de Faraday)</div>
+      <div class="field"><label>Metal<button type="button" class="help-btn" onclick="showHelp('cr_metal',event)">?</button></label>
+        <select id="cr_metal" onchange="crSetMetal()">
+          <option value="hierro" selected>Hierro / acero al carbono (Fe, n=2)</option>
+          <option value="zinc">Zinc (Zn, n=2)</option>
+          <option value="aluminio">Aluminio (Al, n=3)</option>
+          <option value="cobre">Cobre (Cu, n=2)</option>
+          <option value="niquel">Níquel (Ni, n=2)</option>
+          <option value="magnesio">Magnesio (Mg, n=2)</option>
+          <option value="titanio">Titanio (Ti, n=4)</option>
+        </select>
+        <button type="button" class="btn-sync" onclick="syncMaterialToAllTests('cr_metal')" title="Aplica el material elegido acá también en el resto de las pestañas que lo tengan disponible">🔗 Aplicar a todos los ensayos</button>
+      </div>
+      <div class="field"><label>Densidad de corriente de corrosión <code>i_corr</code> (µA/cm²)<button type="button" class="help-btn" onclick="showHelp('cr_icorr',event)">?</button></label>
+        <input type="range" id="cr_icorr" value="5" min="0.1" max="50" step="0.1" oninput="crUpdate()">
+        <div class="note" style="margin-top:2px" id="cr_icorrVal">5 µA/cm²</div></div>
+      <div class="field"><label>Tiempo de exposición (años)<button type="button" class="help-btn" onclick="showHelp('cr_tiempo',event)">?</button></label>
+        <input type="range" id="cr_tiempo" value="20" min="1" max="100" step="1" oninput="crUpdate()">
+        <div class="note" style="margin-top:2px" id="cr_tiempoVal">20 años</div></div>
+      <div class="note">Válido solo para corrosión general/uniforme (no picado ni intergranular). Peso equivalente y densidad: valores de tabla periódica y de manual de ingeniería, mismos datos que usa la Tabla 1 de ASTM G102.</div>
+      <button class="btn-secondary" onclick="exportComplementariosChart('corrosion_faraday.png')">⬇ Exportar imagen</button>
+    </div>
+
+    <div class="sec cm-sub-ctrl" id="cm_ctrl_polimeros">
+      <div class="sec-title">4. Polímeros (curva DMA)</div>
+      <div class="field"><label>Polímero<button type="button" class="help-btn" onclick="showHelp('po_polimero',event)">?</button></label>
+        <select id="po_polimero" onchange="poUpdate()">
+          <option value="caucho">Caucho natural vulcanizado</option>
+          <option value="nylon6">Nylon 6 (poliamida, seco)</option>
+          <option value="pvc">PVC rígido</option>
+          <option value="ps">Poliestireno (PS)</option>
+          <option value="pmma" selected>PMMA (acrílico)</option>
+          <option value="epoxi">Epoxi curado (formulación típica)</option>
+          <option value="pc">Policarbonato (PC)</option>
+        </select>
+        <button type="button" class="btn-sync" onclick="syncMaterialToAllTests('po_polimero')" title="Aplica el material elegido acá también en el resto de las pestañas que lo tengan disponible (solo si hay un equivalente real, ver nota abajo)">🔗 Aplicar a todos los ensayos</button>
+      </div>
+      <div class="field"><label>Temperatura <code>T</code> (°C)<button type="button" class="help-btn" onclick="showHelp('po_temp',event)">?</button></label>
+        <input type="range" id="po_temp" value="105" min="-150" max="230" step="1" oninput="poUpdate()">
+        <div class="note" style="margin-top:2px" id="po_tempVal">105 °C</div></div>
+      <div class="field"><label>Ancho de la transición <code>w</code> (°C)<button type="button" class="help-btn" onclick="showHelp('po_ancho',event)">?</button></label>
+        <input type="range" id="po_ancho" value="10" min="2" max="40" step="1" oninput="poUpdate()">
+        <div class="note" style="margin-top:2px" id="po_anchoVal">10 °C</div></div>
+      <div class="note">Tg real de cada polímero (manual de ingeniería de polímeros); módulos vítreo/gomoso y ancho de transición son órdenes de magnitud ilustrativos, ajustables. No incluye tan δ ni E'' — queda para una fase futura.</div>
+      <button class="btn-secondary" onclick="exportComplementariosChart('polimeros_dma.png')">⬇ Exportar imagen</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <button class="drawer-toggle" onclick="openSidebar()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg> ☰ Parámetros</button>
+
+    <div class="cm-subnav">
+      <button class="cm-subbtn active" data-cm="desgaste" onclick="cmSwitch('desgaste')">1. Desgaste</button>
+      <button class="cm-subbtn" data-cm="tensiones" onclick="cmSwitch('tensiones')">2. Tensiones residuales</button>
+      <button class="cm-subbtn" data-cm="corrosion" onclick="cmSwitch('corrosion')">3. Corrosión</button>
+      <button class="cm-subbtn" data-cm="polimeros" onclick="cmSwitch('polimeros')">4. Polímeros</button>
+    </div>
+
+    <div class="cm-sub-panel active" id="cm_panel_desgaste">
+      <div class="metrics-row">
+        <div class="mcard"><div class="ml">Coeficiente de desgaste <code>k</code></div><div class="mv" id="ds_mK">—</div><div class="ms">adimensional</div></div>
+        <div class="mcard"><div class="ml">Volumen desgastado <code>V</code></div><div class="mv" id="ds_mVolumen">—</div><div class="ms">mm³</div></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Volumen desgastado vs. distancia recorrida — ley de Archard (V = k·F·d/H)</div>
+        <div class="formula-mini">V = k · F · d / H</div>
+        <div style="position:relative;height:280px"><canvas id="ds_chart"></canvas></div>
+        <div class="note" style="margin-top:0">El desgaste adhesivo/abrasivo por deslizamiento es proporcional a la fuerza normal y a la distancia recorrida, e inversamente proporcional a la dureza del material más blando del par.</div>
+        <div class="dz-table-wrap"><table>
+          <thead><tr><th>Par de materiales</th><th>k</th></tr></thead>
+          <tbody>
+            <tr><td>Polietileno – Acero</td><td>1,3×10⁻⁷</td></tr>
+            <tr><td>PMMA (acrílico) – Acero</td><td>7×10⁻⁶</td></tr>
+            <tr><td>Acero inoxidable ferrítico – Acero</td><td>1,7×10⁻⁵</td></tr>
+            <tr><td>PTFE (teflón) – Acero</td><td>2,5×10⁻⁵</td></tr>
+            <tr><td>Cobre-berilio – Acero</td><td>3,7×10⁻⁵</td></tr>
+            <tr><td>Acero de herramienta templado – Acero</td><td>1,3×10⁻⁴</td></tr>
+            <tr><td>Latón (α/β) – Acero</td><td>6×10⁻⁴</td></tr>
+            <tr><td>Acero dulce – Acero dulce</td><td>7×10⁻³</td></tr>
+          </tbody>
+        </table></div>
+        <div class="note">Fuente: J.F. Archard &amp; W. Hirst, "The wear of metals under unlubricated conditions", Proc. R. Soc. London A 236 (1956), 397–410 — ensayos pin-on-disk sin lubricar contra un disco de acero.</div>
+      </div>
+    </div>
+
+    <div class="cm-sub-panel" id="cm_panel_tensiones">
+      <div class="metrics-row">
+        <div class="mcard"><div class="ml">Tensión principal máxima <code>σ_max</code></div><div class="mv" id="tr_mSigmaMax">—</div><div class="ms">MPa</div></div>
+        <div class="mcard"><div class="ml">Tensión principal mínima <code>σ_min</code></div><div class="mv" id="tr_mSigmaMin">—</div><div class="ms">MPa</div></div>
+        <div class="mcard"><div class="ml">Ángulo galga 1 → eje σ_max <code>β</code></div><div class="mv" id="tr_mBeta">—</div><div class="ms">grados</div></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Círculo de Mohr — tensiones principales obtenidas por hole-drilling</div>
+        <div class="formula-mini">σ_max,min = (ε₁+ε₃)/(4A) ∓ √[(ε₁−ε₃)² + (2ε₂−ε₁−ε₃)²] / (4B)</div>
+        <div style="position:relative;height:280px"><canvas id="tr_chart"></canvas></div>
+        <div class="note" style="margin-top:0">El método del agujero (ASTM E837) mide las deformaciones relajadas al perforar un pequeño agujero en el centro de una roseta de 3 galgas (a 0°, 45° y 90°). A partir de esas 3 lecturas y de las constantes de calibración de la roseta (geometría del agujero), se reconstruyen las tensiones residuales principales que existían antes de perforar.</div>
+        <div class="note">Válido solo cuando la tensión residual es aproximadamente uniforme con la profundidad del agujero (caso cubierto por esta calculadora). Si la tensión varía significativamente con la profundidad, ASTM E837 exige el método incremental (fuera del alcance de este ensayo simplificado).</div>
+      </div>
+    </div>
+
+    <div class="cm-sub-panel" id="cm_panel_corrosion">
+      <div class="metrics-row">
+        <div class="mcard"><div class="ml">Velocidad de corrosión <code>CR</code></div><div class="mv" id="cr_mVelocidad">—</div><div class="ms">mm/año</div></div>
+        <div class="mcard"><div class="ml">Pérdida de espesor acumulada</div><div class="mv" id="cr_mPerdida">—</div><div class="ms">mm</div></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Pérdida de espesor vs. tiempo — ley de Faraday (ASTM G102: CR = K₁·i_corr·EW/ρ)</div>
+        <div class="formula-mini">CR = K₁ · i_corr · EW / ρ</div>
+        <div style="position:relative;height:280px"><canvas id="cr_chart"></canvas></div>
+        <div class="note" style="margin-top:0">La corriente de corrosión (i_corr) mide directamente la velocidad de disolución electroquímica del metal. Vía la ley de Faraday, esa corriente se traduce en una pérdida de espesor uniforme por año, proporcional al peso equivalente del metal e inversamente proporcional a su densidad.</div>
+        <div class="dz-table-wrap"><table>
+          <thead><tr><th>Metal</th><th>Peso equivalente (EW)</th><th>Densidad (g/cm³)</th></tr></thead>
+          <tbody>
+            <tr><td>Hierro / acero al carbono</td><td>27,92</td><td>7,87</td></tr>
+            <tr><td>Zinc</td><td>32,69</td><td>7,14</td></tr>
+            <tr><td>Aluminio</td><td>8,99</td><td>2,70</td></tr>
+            <tr><td>Cobre</td><td>31,77</td><td>8,96</td></tr>
+            <tr><td>Níquel</td><td>29,35</td><td>8,90</td></tr>
+            <tr><td>Magnesio</td><td>12,15</td><td>1,74</td></tr>
+            <tr><td>Titanio</td><td>11,97</td><td>4,51</td></tr>
+          </tbody>
+        </table></div>
+        <div class="note">Fuente: ASTM G102, "Standard Practice for Calculation of Corrosion Rates and Related Information from Electrochemical Measurements" — CR=K₁·i_corr·EW/ρ, K₁=3,27×10⁻³ mm·g/(µA·cm·año). EW y ρ: peso atómico/valencia usual y densidad de manual de ingeniería.</div>
+      </div>
+    </div>
+
+    <div class="cm-sub-panel" id="cm_panel_polimeros">
+      <div class="metrics-row">
+        <div class="mcard"><div class="ml">Temperatura de transición vítrea <code>T_g</code></div><div class="mv" id="po_mTg">—</div><div class="ms">°C</div></div>
+        <div class="mcard"><div class="ml">Módulo de almacenamiento <code>E'</code></div><div class="mv" id="po_mModulo">—</div><div class="ms">MPa</div></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Curva DMA — módulo de almacenamiento E' vs. temperatura</div>
+        <div class="formula-mini">E'(T) = E_r + (E_g − E_r) / (1 + e^((T−T_g)/w))</div>
+        <div style="position:relative;height:280px"><canvas id="po_chart"></canvas></div>
+        <div class="note" style="margin-top:0">Por debajo de T_g el polímero está en estado vítreo (rígido, E' del orden de GPa). Al atravesar T_g, la movilidad de las cadenas aumenta y E' cae varios órdenes de magnitud hacia la mesa gomosa (MPa). Este modelo simplificado (sigmoideo) alcanza para ubicar la transición; no reemplaza un ensayo DMA real ni el modelo WLF de superposición tiempo-temperatura.</div>
+        <div class="dz-table-wrap"><table>
+          <thead><tr><th>Polímero</th><th>T_g (°C)</th></tr></thead>
+          <tbody>
+            <tr><td>Caucho natural vulcanizado</td><td>-70</td></tr>
+            <tr><td>Nylon 6 (poliamida, seco)</td><td>50</td></tr>
+            <tr><td>PVC rígido</td><td>80</td></tr>
+            <tr><td>Poliestireno (PS)</td><td>100</td></tr>
+            <tr><td>PMMA (acrílico)</td><td>105</td></tr>
+            <tr><td>Epoxi curado (formulación típica)</td><td>120</td></tr>
+            <tr><td>Policarbonato (PC)</td><td>150</td></tr>
+          </tbody>
+        </table></div>
+        <div class="note">T_g: valores estándar de manual de ingeniería de polímeros. La Tg de PVC, epoxi y nylon varía bastante según formulación/humedad — estos son valores representativos típicos, no de un lote específico.</div>
+      </div>
+    </div>
+  </main>
+</div>
+
 
 <!-- TEST PANEL -->
 <div class="test-panel" id="testPanel" style="display:none">
@@ -1639,6 +1872,10 @@
 <script src="assets/fractura.js"></script>
 <script src="assets/fatiga.js"></script>
 <script src="assets/fluencia.js"></script>
+<script src="assets/desgaste.js"></script>
+<script src="assets/tensiones-residuales.js"></script>
+<script src="assets/corrosion.js"></script>
+<script src="assets/polimeros.js"></script>
 <script src="assets/ficha.js"></script>
 <script src="assets/material-sync.js"></script>
 <script src="assets/progreso.js"></script>
@@ -1651,5 +1888,16 @@
   </div>
 </div>
 <script src="assets/help-data.js"></script>
+<script>
+// FIX v4.8: registro del service worker (PWA instalable + uso offline).
+// Se registra al final y de forma silenciosa: si falla (ej. abierto como
+// archivo local con file://, donde los service workers no funcionan), la
+// app sigue funcionando igual, solo sin caché offline.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+</script>
 </body>
 </html>
