@@ -1,0 +1,806 @@
+SIMULADOR DE ENSAYOS MECÁNICOS (Sim_MatyEns) — CHANGELOG
+=================================================================
+Historial consolidado a partir de: el detalle fase por fase registrado
+en las sesiones de desarrollo (v3.1 en adelante), una reconstrucción
+por memoria de las versiones anteriores a eso, y la revisión de QA de
+v4.11. Las fechas de las versiones más viejas no están disponibles con
+precisión de día y se indican como períodos aproximados; desde v3.16
+el detalle es exacto.
+Repo: https://github.com/Bharash11/Sim_MatyEns
+Deploy: https://bharash11.github.io/Sim_MatyEns/
+=================================================================
+
+>>> NOTA — TRAMO SIN DOCUMENTAR (v4.6 y el bump 4.5 → 4.7) <<<
+No hay changelog disponible para qué pasó puntualmente en v4.6, ni para
+el paso de v4.5 a v4.7 (versión de partida del changelog de v4.7→v4.10).
+Todo el resto de la línea de tiempo, desde v3.17 hasta v4.11, ya está
+documentado más abajo. Si aparece el detalle de ese tramo, se puede
+insertar acá para cerrar el hueco.
+=================================================================
+
+## [4.11] — Revisión de QA por partes sobre la base v4.10
+
+Revisión de QA hecha por partes (núcleo, durezas, tracción/compresión,
+fatiga/fractura/fluencia, ensayos complementarios, ficha/progreso/tests,
+tests.js/index.html) sobre la base v4.10.
+
+1. SEGURIDAD — SRI faltante en el CDN de Chart.js
+   Archivos: index.html, sw.js
+   - Se agregó integrity (SRI) + crossorigin="anonymous" al <script> de
+     Chart.js 4.4.1 cargado desde cdnjs, para blindar contra un eventual
+     compromiso del CDN (o un MITM en la red del aula).
+   - El Service Worker pasó de precachear ese script en modo 'no-cors'
+     (respuesta opaca, no verificable) a modo 'cors' + el mismo hash SRI,
+     tanto en el precache de instalación como en el fetch en tiempo de
+     ejecución. Si el hash no coincide, el fetch falla en vez de cachear
+     una copia sin verificar.
+   - PENDIENTE PARA AGUS: el hash SRI se tomó de una fuente de terceros
+     (no se pudo calcular localmente por restricciones de red del entorno
+     de revisión). Verificarlo una vez en https://www.srihash.org/ antes
+     de confiar en él a largo plazo, sobre todo si en algún momento se
+     sube de versión Chart.js.
+
+2. CONTENIDO — Ayuda contextual faltante en Dureza
+   Archivos: index.html, assets/help-data.js
+   - Solo 2 de 8 subsecciones de Dureza (Mohs y el control ilustrativo de
+     Rockwell) tenían botón de ayuda "?". Se agregaron los 6 restantes:
+     Ensayo Rockwell, Ensayo Brinell, Vickers, Knoop, Conversión de
+     dureza, Correlación con TS, Ensayo Janka y Esclerómetro (8 en total,
+     Vickers/Knoop cuentan por separado).
+   - Se escribieron los textos explicativos correspondientes en
+     help-data.js (mismo nivel de detalle que el resto del simulador).
+
+3. TEXTO — Nota de %EL circular en la ficha de Tracción
+   Archivo: assets/traccion.js
+   - La nota "Cálculos explícitos" reconstruía l_f a partir del %EL ya
+     cargado y lo mostraba como si fuera una derivación independiente.
+     Se agregó un paso previo explícito (l_f = l0 + %EL·l0) y una
+     aclaración de que, en un ensayo real, el orden es al revés: se mide
+     l_f después de la rotura y con eso se calcula el %EL.
+
+4. DATO — σ_y de "Magnesio AZ31" posiblemente mezclado con compresión
+   Archivo: assets/data-presets.js
+   - El valor sy=97 MPa coincide con la resistencia a la fluencia en
+     COMPRESIÓN (CYS) de AZ31 citada en literatura, no con la de
+     TRACCIÓN (TYS), que ese campo representa para todos los demás
+     materiales del simulador (~150-200 MPa según temple).
+   - Se corrigió a sy=150 MPa (valor típico de AZ31-F según ASM), dejando
+     un comentario en el código pidiendo que Agus lo confirme contra la
+     fuente/tabla original antes de darlo por definitivo.
+
+5. TESTS — Sin autoconsistencia dinámica para Brinell y Rockwell
+   Archivo: assets/tests.js
+   - Ya existía un test (dz_vickers_ref_table) que recorre TODOS los
+     materiales de VICKERS_REF y verifica que su (P,d) reproduzca el HV
+     tabulado — así que un error futuro se detecta solo, sin tocar el
+     test. Brinell y Rockwell no tenían el equivalente.
+   - Se agregó dz_brinell_ref_table (misma lógica, fórmula de Brinell con
+     D=10mm fijo).
+   - Se agregó dz_rockwell_ref_table (reproduce la fórmula real que usa
+     dzUpdateRk() para pasar de slider→HR, tolerancia ±5 puntos, mismo
+     umbral que ya usa la propia interfaz para decir "cerca").
+
+6. TEXTO — Título desactualizado en el test de Vickers
+   Archivo: assets/tests.js
+   - "VICKERS_REF — los 15 pares..." se corrigió a "todos los pares...",
+     ya que tras v4.10 la tabla tiene 24 entradas, no 15 (el test en sí
+     ya usaba Object.keys().length para el conteo real, solo el título
+     había quedado desactualizado).
+
+7. TESTS — Cobertura de existencia para los materiales de v4.10
+   Archivo: assets/tests.js
+   - El test presets_nuevos solo verificaba una tanda anterior de 10
+     materiales. Se agregó presets_v4_10, que verifica la presencia de
+     los 18 materiales agregados en esa versión (aisi1045, acero4140,
+     aluminio7075, aluminio2024, broncefosforico, hierronodular,
+     inconel718, titaniocp2, sic, si3n4, zirconia, gfrp, kevlarepoxi,
+     hdpe, pp, pvcrigido, abs, pc).
+
+BUMP DE VERSIÓN 4.10 → 4.11
+Archivos: index.html, assets/traccion.js, sw.js
+   - <title> y badge de versión en el header (index.html).
+   - Pie de la ficha técnica de Tracción (traccion.js).
+   - SW_CACHE_VERSION en sw.js (fuerza a los navegadores/PWA ya
+     instalados a refrescar la caché con los cambios de arriba).
+   - Se dejaron intactos los comentarios "FIX (v4.10): ..." repartidos en
+     el código (dureza-vickers.js, dureza-brinell.js, data-presets.js,
+     ficha.js, dureza-rockwell.js, tests.js) y las etiquetas
+     "Materiales nuevos (v4.10)" de los <optgroup> del HTML: documentan
+     CUÁNDO pasó cada cosa, no la versión actual, y renumerarlos los
+     volvería incorrectos.
+
+VERIFICACIONES HECHAS ANTES DE ENTREGAR
+   - node --check en los 5 archivos JS modificados: sin errores de
+     sintaxis.
+   - Cada showHelp('clave') nuevo en index.html tiene su entrada
+     correspondiente en help-data.js (chequeado programáticamente).
+   - Se confirmó que ningún otro archivo tenía hardcodeado el viejo
+     sy=97 del magnesio antes de cambiarlo.
+
+PENDIENTE — no se pudo hacer en este entorno (sin navegador/DOM real):
+   - Correr runAllTests() en un navegador real para confirmar que los
+     ~92 tests (90 originales + 2 nuevos de dureza + 1 de v4.10) pasan
+     en verde, incluyendo los 2 tests nuevos de autoconsistencia.
+
+=================================================================
+
+## [4.10] — 18 materiales nuevos
+
+- NUEVO: 18 materiales agregados a PRESETS (data-presets.js), a partir de
+  una compilación propia verificada contra fuentes reales (MatWeb,
+  Wikipedia, papers de cerámicos técnicos) antes de cargar ningún valor:
+
+  Metales (8): aisi1045 (Acero AISI 1045, normalizado), acero4140 (AISI
+  4140, templado y revenido), aluminio7075 (7075-T6), aluminio2024
+  (2024-T3), broncefosforico (CuSn8, temple duro), hierronodular
+  (fundición nodular ASTM A536 60-40-18, dúctil), inconel718
+  (envejecido), titaniocp2 (CP Grado 2, recocido).
+
+  Cerámicos técnicos (3): sic (carburo de silicio), si3n4 (nitruro de
+  silicio), zirconia (ZrO₂ 3Y-TZP) — con K_IC bastante más alto que la
+  Al₂O₃ ya cargada, buen caso de cátedra para mostrar que "cerámica" no
+  es sinónimo de "frágil como el vidrio".
+
+  Compuestos unidireccionales (2): gfrp (fibra de vidrio/epoxi),
+  kevlarepoxi (Kevlar 49/epoxi) — mismo criterio que la Fibra de carbono
+  ya cargada (propiedad en la dirección de la fibra de un laminado UD).
+
+  Polímeros (5): hdpe, pp, pvcrigido (PVC rígido/UPVC), abs, pc
+  (Policarbonato).
+
+Correcciones encontradas durante la verificación (antes de cargar):
+   - Aluminio 2024-T3: el HB real (MatWeb) es 120, no ~130 como decía la
+     compilación original.
+   - Policarbonato: venía marcado como dato sin confirmar; se verificó
+     sólido cruzando varias fuentes (Rockwell M70 coincide en todas).
+   - HDPE y PP: su %EL real supera 400-600%, pero el simulador valida un
+     máximo de 200% — se cargaron topeados a 200, aclarado en el código.
+
+Wireado en el resto del simulador (no solo cargados en PRESETS):
+   - Selects de Tracción, Compresión, Comparar (x2) y Compuesto (x2), y
+     Temperatura — optgroup nuevo "Materiales nuevos (v4.10)" en los 7
+     lugares.
+   - Dureza: Brinell (7 materiales), Vickers (9 materiales), Rockwell (8
+     materiales) — P/carga y d/diagonal (Brinell y Vickers) y posición
+     de slider (Rockwell) calculados resolviendo las fórmulas reales del
+     simulador para reproducir el HB/HV/HR de cada material, no
+     copiados a mano.
+   - Ficha técnica: 18 etiquetas nuevas en MATERIAL_LABELS (ficha.js).
+
+Dejado afuera a propósito (sin dato real, mismo criterio que el resto
+del simulador — mejor un campo ausente que uno inventado):
+   - Fractura/fatiga/fluencia (K_IC, Paris, Dorn) en ninguno de los 18.
+   - Dureza de los 5 polímeros nuevos: sus escalas reales (Shore D,
+     Rockwell R/M) usan indentador y fórmula distintos a los que
+     implementa este simulador (HB/HV/HRB-HRC) — cargar un número ahí
+     aplicaría mal la escala. Mismo motivo por el que Nylon y Fibra de
+     carbono ya quedaban afuera de esa tabla.
+   - Grupo A (Desgaste, Corrosión, Polímeros-DMA), Janka, Mohs y
+     Esclerómetro: no aplican a estos 18 materiales (necesitan datasets
+     propios — coeficiente de Archard, peso equivalente electroquímico,
+     Tg/E'/E'' — que la compilación no traía para ellos).
+
+- FIX: clave "acero1045" renombrada a "aisi1045" para evitar colisión
+  con una clave ya existente (con otro significado) en FT_SN_PRESETS de
+  fatiga.js.
+- FIX: precisión del diagonal de Vickers de la Zirconia (tenía 2,5% de
+  error contra el HV declarado, se corrigió a 0,0385 mm).
+- FIX: %EL de HDPE y PP fuera del rango que valida el simulador (ver
+  arriba).
+- Materiales_Sim_MatyEns.md (documento de referencia aparte, no forma
+  parte de la app): actualizado con una sección 4 nueva documentando
+  los 18 materiales, qué se corrigió en la verificación, y qué quedó
+  afuera y por qué.
+- Versión bumpeada 4.9 → 4.10 (title, verBadge, footer, SW_CACHE_VERSION).
+- Validado con: 90/90 tests internos en verde + un smoke test aparte que
+  recorrió los 18 materiales nuevos en los 12 puntos donde se
+  enchufaron (Tracción, Compresión, Rockwell, Brinell, Vickers, Ficha,
+  Comparar x2, Compuesto x2, Temperatura) sin un solo error de consola.
+
+## [4.9] — Rockwell corregido, fórmulas visibles, más explicación en Grupo A
+
+- FIX: dibujo de Rockwell (dureza-rockwell.js) — el penetrador estaba
+  dibujado al revés: la punta angosta quedaba afuera del material
+  (arriba) y se iba ensanchando hacia abajo, como un carámbano
+  invertido. Se rediseñó con dos formas separadas y con la orientación
+  física correcta: 1) la herramienta (fija, apoyada sobre la
+  superficie, dibujada solo como contorno), 2) la huella que deja
+  adentro del material (crece en profundidad Y en ancho de superficie a
+  medida que penetra más, como una huella cónica real). Se agregó
+  además una guía de profundidad punteada y la etiqueta "MATERIAL" se
+  reubicó para no superponerse con el dibujo.
+
+- NUEVO: fórmulas visibles (clase .formula-mini) debajo del título de
+  cada gráfico principal:
+   - Tracción: σ = E·ε (elástica, Ley de Hooke exacta) y la curva real
+     de interpolación que usa el motor de curvas para la zona plástica
+     y de estricción — aclarando explícitamente que esa parte es una
+     curva ajustada para reproducir la forma típica del ensayo, no una
+     única ley de manual (tipo Hollomon o Ramberg-Osgood).
+   - Compresión: mismo criterio, con la fórmula real de
+     fluencia/aplastamiento que usa el código.
+   - Dureza: fórmula de Brinell (HB), de Vickers/Knoop (HV/HK), y de la
+     correlación TS = 3,45·HB.
+
+- NUEVO: explicación conceptual ampliada ("¿Qué es...?") al inicio de
+  los 4 ensayos de "Ensayos complementarios" (Grupo A) — Desgaste,
+  Tensiones residuales, Corrosión y Polímeros — cubriendo el mecanismo
+  físico, tipos/categorías y por qué importa en la práctica de
+  ingeniería. Mismo patrón visual que ya usaba la pestaña de Fractura.
+  (Nota: en una revisión posterior se marcó que esto quedó bastante más
+  extenso — entre 249 y 344 palabras por panel — que la tarjeta de
+  Fractura que se tomó como referencia de estilo, 64 palabras. Quedó
+  pendiente recortarlo si Agus lo pide en la v4.11.)
+
+- Versión bumpeada 4.8 → 4.9 (title, verBadge, footer, SW_CACHE_VERSION).
+
+- Infraestructura de testing nueva: se armó una forma de correr el
+  simulador con Chrome headless real (puppeteer-core sobre un Chrome ya
+  presente en el entorno) en vez de solo revisar el código a ojo. Como
+  el entorno de testeo bloquea cdnjs.cloudflare.com (de donde viene
+  Chart.js), fue necesario interceptar esa request y servir un
+  Chart.js instalado vía npm en su lugar — sin eso, la app tira un
+  error falso positivo ("testsScriptLoading is not defined") que no
+  tiene nada que ver con bugs reales. Con Chart.js real: 90/90 tests
+  internos en verde, sin errores de consola.
+
+## [4.8] — PWA (instalable + uso offline)
+
+- NUEVO: manifest.json
+   - Nombre, descripción, colores de tema (theme_color #1a5fa8 /
+     background_color #f2f1ed, tomados de styles.css), start_url y
+     scope relativos.
+   - 15 íconos generados (assets/icons/), con una curva
+     tensión-deformación como logo: 13 tamaños estándar (16 a 512px) +
+     2 versiones "maskable" (192/512) con zona de seguridad para
+     Android. Cada tamaño se verificó en píxeles reales contra lo
+     declarado en el manifest.
+   - favicon.ico multi-tamaño (16/32/48) para pestaña y favoritos del
+     navegador.
+
+- NUEVO: sw.js (service worker)
+   - Precachea index.html + todos los archivos de assets/ (49 archivos
+     en total, verificado 1 a 1 contra lo que hay en disco).
+   - Estrategia: red primero para el HTML de navegación (con fallback a
+     caché si no hay conexión) — así se ven cambios apenas hay
+     internet, pero funciona offline. Caché primero para CSS/JS/íconos
+     y para Chart.js del CDN — arranca rápido y funciona sin conexión.
+   - Borra cachés de versiones anteriores en el evento "activate".
+   - SW_CACHE_VERSION: hay que subirlo a mano en cada release que toque
+     assets/ o index.html (si no, los que ya instalaron la PWA quedan
+     con la versión vieja cacheada aunque GitHub Pages ya tenga la
+     nueva).
+
+- index.html: <link rel="manifest">, meta theme-color,
+  apple-touch-icon, meta mobile-web-app-capable (+ el equivalente
+  no-deprecado de Apple), y registro del service worker al final del
+  <body> (silencioso: si falla, ej. abierto como archivo local, la app
+  sigue funcionando igual).
+
+- Versión bumpeada 4.7 → 4.8 (title, verBadge, footer de la ficha
+  impresa).
+
+- Validado con Chrome headless real (no solo lectura de código):
+  service worker queda "activo", recarga 100% offline funciona (HTML
+  completo, no pantalla en blanco), manifest parsea bien con sus 15
+  íconos.
+
+## [4.7] — VERSIÓN DE PARTIDA del tramo v4.7 → v4.10
+No hay detalle propio para v4.7 en sí: es la versión con la que arranca
+el changelog de este tramo (v4.7 → v4.10). El detalle de qué cambió
+puntualmente para llegar a v4.7 desde v4.5 (que incluye la v4.6
+intermedia) no está documentado — ver nota de tramo sin documentar al
+inicio de este archivo.
+
+=================================================================
+
+## [4.5] — Ciclo de QA (25 de julio de 2026)
+
+Versión de partida: 4.4 (título/footer aún mostraban "3.17" en dos
+lugares — ver bug #1). Alcance del testeo: 4 pestañas principales, 33
+subsecciones, suite interna de 71→78 tests automatizados, más
+funcionalidad transversal (sync de materiales, Ficha técnica, Mi
+progreso, exportación, impresión, responsive/mobile).
+
+Se ejecutó un plan de QA en 9 etapas ordenadas (higiene y entorno →
+suite interna → cada módulo de la app → funcionalidad transversal →
+barrido dedicado de inputs → mobile → regresión final). Se encontraron
+5 bugs, todos puntuales y no destructivos (ningún crash, ninguna
+pérdida de datos, ningún cálculo científico central comprometido). El
+patrón que ya se venía monitoreando desde ciclos anteriores —
+sliders/<select> estructuralmente inmunes al bug de NaN/Infinity por
+tipeo inválido, campos de texto libre necesitan guarda explícita — se
+confirmó una vez más: los dos módulos con más superficie nueva (Dureza
+y Ensayos complementarios) no arrojaron ningún bug nuevo porque
+prácticamente todos sus parámetros son sliders o desplegables. Los 5
+bugs de este ciclo aparecieron, sin excepción, en los pocos campos de
+texto libre que quedan repartidos entre Compresión, Ficha técnica y
+Fluencia.
+
+Bugs encontrados y corregidos:
+
+1. Versión mostrada al usuario, inconsistente (cosmética, pero visible
+   en lo que el alumno entrega/imprime). El <title> de la página y el
+   pie de página de la Ficha técnica impresa/exportada a PDF decían
+   "3.17", mientras el badge de versión en pantalla (#verBadge) ya
+   decía correctamente "4.4". Archivos: index.html, assets/traccion.js.
+   Fix: se unificó todo a la versión final del ciclo, 4.5, en los tres
+   lugares (<title>, #verBadge, footer de la ficha impresa).
+
+2. Ficha técnica — gráficos en blanco al cambiar de material rápido
+   (severidad media). ficha.js no llamaba a chart.destroy() antes de
+   recrear los 5 gráficos de la Ficha técnica (tracción, compresión,
+   fractura, fatiga, fluencia). Si se generaba la ficha para un
+   material y se cambiaba a otro más rápido de lo que tarda el
+   setTimeout interno de 100ms, Chart.js rechazaba crear el nuevo
+   gráfico ("Canvas is already in use") y el mini-gráfico quedaba en
+   blanco. Archivo: assets/ficha.js. Fix: Chart.getChart(canvas)?.
+   destroy() antes de cada uno de los 5 new Chart(...).
+
+3. Compresión — d₀=0 mostraba "Infinity" (severidad menor). El campo d₀
+   tiene min="1" en el HTML, pero eso no bloquea tipear 0 (o un
+   negativo) directamente. Con d₀≤0, la relación h₀/d₀ del aviso de
+   pandeo calculaba Infinity y lo mostraba tal cual en el texto.
+   Archivo: assets/traccion.js (función updateCompDerived, compartida
+   con la pestaña Compresión). Fix: validación d>0 antes de dividir,
+   con mensaje de validación explícito.
+
+4. Fluencia / Larson-Miller — constante C sin validar (severidad menor,
+   pero sutil: no rompe la pantalla, muestra un resultado con
+   apariencia válida a partir de un dato sin sentido). A diferencia de
+   los otros dos campos de la misma función (tiempo y temperatura de
+   ensayo), la constante C (típicamente 15–30 para metales) no tenía
+   ninguna guarda — tipear 0, un negativo o dejarla vacía no daba NaN
+   ni "Infinity" (el signo de C no rompe la cuenta matemáticamente)
+   pero sí calculaba y mostraba una vida en servicio numéricamente
+   "normal" sin ningún aviso de dato físicamente inválido. Archivo:
+   assets/fluencia.js (función flUpdateExtrapolacion). Fix: validación
+   isFinite(C) && C>0 antes de calcular, mismo criterio que ya usan
+   trTest y Ttest en esa misma función.
+
+5. Compresión / Ficha técnica — falso positivo de "elemento fuera de
+   pantalla" en mobile (descartado, no es un bug real). Durante la
+   Etapa 8 el botón "Iniciar ensayo" y el cierre del drawer parecían
+   fallar en viewports mobile — se investigó y en ambos casos fue
+   metodología de test propia (no había abierto el menú "☰ Parámetros"
+   primero, o se tapeó el centro de la pantalla en vez de la franja
+   visible del overlay).
+
+Regresión final: 78/78 tests internos en verde (71 de la suite previa +
+7 agregados en ciclos recientes de dureza/complementarios), 0 errores
+de consola en un recorrido completo por las 33 subsecciones de las 4
+pestañas, y confirmación por HTTP real (no solo file://) de que las
+reglas de impresión @page/@media print están correctamente aplicadas.
+
+Notas para el próximo ciclo: el patrón "slider/dropdown =
+estructuralmente seguro, texto libre = necesita guarda explícita" sigue
+siendo la mejor heurística para anticipar dónde puede aparecer este
+tipo de bug en módulos futuros — de los ~50 campos type="number" de
+toda la app, prácticamente todos los que quedan sin cubrir ya tienen
+guarda propia. Sigue pendiente (mencionado en desgaste.js) un eventual
+"Grupo B" de Ensayos complementarios (metalografía/Voronoi) para una
+fase futura. El menú "☰ Parámetros" (drawer off-canvas) en mobile
+funciona correctamente en las 4 pestañas.
+
+## [4.4] — Polímeros / curva DMA (Fase A4, CIERRA el Grupo A)
+
+Cuarto y último ensayo del Grupo A. Curva DMA acotada al módulo de
+almacenamiento E' vs. temperatura (sin tan δ ni E'').
+
+- assets/polimeros.js (nuevo):
+   - poCalcModulo(T, Tg, Eg, Er, w) — función pura: modelo sigmoideo
+     simplificado (no el modelo WLF completo de superposición
+     tiempo-temperatura) que hace caer E' desde el módulo vítreo hasta
+     el gomoso alrededor de Tg.
+   - PO_POLIMERO_TABLE — 7 polímeros con Tg REAL de manual de
+     ingeniería de polímeros (caucho natural vulcanizado -70°C, nylon 6
+     seco 50°C, PVC rígido 80°C, poliestireno 100°C, PMMA 105°C, epoxi
+     curado típico 120°C, policarbonato 150°C — valores verificados con
+     una búsqueda puntual antes de usarlos). Módulos vítreo/gomoso y
+     ancho de transición: ilustrativos, ajustables (mismo criterio que
+     la dureza por defecto en Desgaste).
+- index.html: 4to y último botón de sub-nav del Grupo A, "Polímeros" +
+  controles (polímero, temperatura, ancho de transición) + panel de
+  resultados (Tg, E' actual) + gráfico: E' vs. T en escala logarítmica
+  + tabla de Tg con su fuente. Bump de versión: 4.3 → 4.4.
+- assets/tests.js: dom_tabs actualizado (4 cm-subbtn — Grupo A
+  completo). 4 tests nuevos: punto medio exacto en T=Tg, asíntotas
+  vítrea/gomosa lejos de Tg, ancho de transición inválido (≤0) → NaN,
+  integridad de PO_POLIMERO_TABLE. (Uno de los tests de asíntota falló
+  en la primera corrida por una tolerancia propia demasiado ajustada —
+  1% en vez del ~2,7% real de error relativo esperado en ese punto — se
+  corrigió antes de entregar.)
+- Testeo: 71/75 → 75/79 OK, sin regresiones.
+
+## [4.3] — Corrosión (Fase A3)
+
+Tercer ensayo. Ley de Faraday, acotada a velocidad de corrosión
+general/uniforme (sin picado ni intergranular).
+
+- assets/corrosion.js (nuevo):
+   - crCalcVelocidad(icorr, EW, rho) — función pura: CR =
+     K₁·i_corr·EW/ρ (mm/año). Fórmula y constante K₁=3,27×10⁻³
+     mm·g/(µA·cm·año) REALES, de ASTM G102 ("Standard Practice for
+     Calculation of Corrosion Rates and Related Information from
+     Electrochemical Measurements"), confirmadas contra varias fuentes
+     independientes.
+   - CR_METAL_TABLE — 7 metales (Fe, Zn, Al, Cu, Ni, Mg, Ti) con peso
+     equivalente (AW/valencia) y densidad REALES de tabla periódica /
+     manual de ingeniería (mismos datos que trae la Tabla 1 de ASTM
+     G102 para metales puros).
+- index.html: 3er botón de sub-nav "Corrosión" + controles (metal,
+  i_corr, tiempo de exposición) + panel de resultados (velocidad y
+  pérdida acumulada) + gráfico: pérdida de espesor vs. tiempo + tabla
+  de EW/ρ con su cita. Bump de versión: 4.2 → 4.3.
+- assets/tests.js: dom_tabs actualizado (3 cm-subbtn). 4 tests nuevos:
+  proporcionalidad directa/inversa de la fórmula, orden de magnitud
+  físicamente realista para acero al carbono (µm a décimas de mm/año),
+  densidad inválida (≤0) → NaN, integridad de CR_METAL_TABLE.
+- Testeo: 67/71 → 71/75 OK, sin regresiones.
+
+## [4.2] — Tensiones residuales / hole-drilling (Fase A2)
+
+Segundo ensayo. Método del agujero (ASTM E837), caso de tensión
+uniforme.
+
+- assets/tensiones-residuales.js (nuevo):
+   - trCalcTensiones(ε1, ε2, ε3, A, B) — función pura: a partir de las
+     3 deformaciones medidas (galgas a 0°/45°/90°) y las constantes de
+     calibración A, B, devuelve σ_max, σ_min y el ángulo β (galga 1 →
+     eje de σ_max). Fórmulas deducidas de las ecuaciones base de Vishay
+     Tech Note TN-503 y verificadas contra un caso simbólico de tensión
+     uniaxial antes de darlas por buenas.
+   - TR_CAL_TABLE — constantes de calibración A, B REALES para una
+     única geometría verificada: roseta Tipo A (062RE/UL), agujero
+     pasante, D₀/D=0,35 (Vishay TN-503, calibración experimental sobre
+     acero inoxidable AISI 304). Se decidió no incluir 2-3 geometrías
+     (como se hizo con k en Desgaste) porque la única copia de la Tabla
+     3 completa de ASTM E837 disponible tenía el OCR ilegible (números
+     de filas/columnas mezclados) — se prefirió 1 dato verificado antes
+     que 2-3 sin garantía. Queda pendiente ampliar si aparece una copia
+     limpia del estándar.
+   - Decisión de diseño (consultada con el usuario): el alumno ingresa
+     las 3 deformaciones medidas ε1/ε2/ε3 directamente (es el dato real
+     que se mide en la práctica), no una tensión oculta a "adivinar".
+- index.html: 2do botón de sub-nav "Tensiones residuales" + controles
+  (selector de roseta/calibración, 3 sliders de deformación) + panel de
+  resultados (σ_max, σ_min, β) + gráfico: círculo de Mohr. Bump de
+  versión: 4.1 → 4.2.
+- assets/tests.js: dom_tabs actualizado (2 cm-subbtn). 4 tests nuevos:
+  recupera el caso de calibración real (σ_max≈68,9 MPa, con ε2 derivado
+  de las mismas ecuaciones para ese caso uniaxial ya que la fuente no
+  lo reporta directamente), caso equibiaxial (σ_max=σ_min, sin corte),
+  caso sin deformación (σ=0), integridad de TR_CAL_TABLE (A y B
+  negativos).
+- Testeo: 63/67 → 67/71 OK, sin regresiones.
+
+## [4.1] — Desgaste / tribología (Fase A1 del Grupo A)
+
+Primer ensayo real de la 4ta pestaña. Ley de Archard.
+
+- assets/desgaste.js (nuevo):
+   - dsCalcVolumen(k, F, d, H) — función pura: V = k·F·d/H.
+   - DS_K_TABLE — 8 pares de materiales con coeficiente de desgaste k
+     REAL, tomado de Archard & Hirst (1956), "The wear of metals under
+     unlubricated conditions", según se reproduce en la tabla resumen
+     del artículo "Wear coefficient": Polietileno, PMMA, acero
+     inoxidable ferrítico, PTFE, cobre-berilio, acero de herramienta
+     templado, latón, acero dulce (todos vs. acero). No se encontró un
+     valor bibliográfico específico de acero-bronce; se usó este set de
+     pares en su lugar.
+   - cmSwitch() — sub-nav genérico de TODA la pestaña "Ensayos
+     complementarios" (no específico de Desgaste), pensado para que los
+     siguientes ensayos lo reutilicen sin tocarlo.
+- assets/export.js: exportComplementariosChart(filename) — función
+  genérica de exportación de imagen (lee el canvas del panel
+  .cm-sub-panel activo), para no reescribir una función nueva por cada
+  ensayo que se agregue después.
+- assets/styles.css: clases .cm-subnav / .cm-subbtn / .cm-sub-panel /
+  .cm-sub-ctrl, calcadas de las .dz-* ya existentes.
+- index.html: reemplazo del placeholder "Próximamente" por los
+  controles reales (selector de par de materiales, fuerza, distancia
+  recorrida, dureza), el gráfico Chart.js (volumen desgastado vs.
+  distancia recorrida) y la tabla de los 8 coeficientes k con su cita
+  bibliográfica. Bump de versión: 4.0 → 4.1.
+- assets/tests.js: dom_tabs actualizado (ahora valida también 1
+  cm-subbtn). 4 tests nuevos: caso de referencia bibliográfico
+  (recupera el ejemplo numérico de Wikipedia "Wear coefficient"),
+  proporcionalidad directa/inversa de la fórmula, dureza inválida (≤0)
+  → NaN, integridad de DS_K_TABLE.
+- Testeo: 59/63 → 63/67 OK (los 4 nuevos tests pasan, mismos 4 fails
+  preexistentes de localStorage, sin regresiones).
+
+## [4.0] — Esqueleto de la 4ta pestaña principal
+
+Objetivo: dejar la base lista para poder ir agregando los ensayos del
+Grupo A de a uno, sin mezclar "crear la pestaña" con "crear el primer
+ensayo".
+
+- index.html: nuevo botón de pestaña "Ensayos complementarios" (4ta,
+  después de Fractura/fatiga/fluencia). Nuevo <div class="page"
+  id="tab-complementarios"> vacío, con el mismo patrón (aside.sidebar +
+  main.main) que las otras 3 pestañas. Contenido placeholder
+  "Próximamente". Bump de versión: verBadge 3.17 → 4.0.
+- assets/tests.js: test dom_tabs actualizado para esperar 4 tabs y 4
+  páginas (antes de que se agregara el primer ensayo real, para no
+  repetir el problema de v3.4 donde este test quedó desactualizado en
+  silencio).
+- Sin ensayos nuevos todavía (a propósito).
+- CHANGELOG.md: no se tocó (no vino en el zip; se decidió saltear por
+  ahora).
+- Testeo: suite corrida vía jsdom + shims de matchMedia/Chart.js (sin
+  Chrome real disponible en el sandbox). 59/63 OK, mismos 4 fails que
+  ya tenía v3.17 sin modificar (localStorage no disponible en orígenes
+  file://, no es un bug real).
+
+=================================================================
+PENDIENTES ABIERTOS AL CIERRE DE v4.4 (heredados, algunos ya resueltos
+en v4.5 — ver arriba)
+=================================================================
+Limitaciones de diseño conocidas (no son bugs, quedaron anotadas a
+propósito):
+   - Desgaste: sin par acero-bronce verificado bibliográficamente.
+   - Tensiones residuales: una sola geometría de roseta calibrada
+     (falta ampliar la tabla completa de ASTM E837 si aparece una copia
+     legible).
+   - Corrosión: acotada a corrosión general/uniforme (no picado, no
+     intergranular).
+   - Polímeros: modelo sigmoideo simplificado (no WLF completo), sin
+     tan δ ni E''.
+
+Integración pendiente al cierre de v4.4 (no confirmado si se resolvió
+después, dentro del tramo sin documentar v4.5→v4.7): los 4 ensayos del
+Grupo A no estaban conectados con el sistema central de materiales
+(PRESETS + material-sync.js + ficha.js) — no aparecían en la Ficha
+técnica ni heredaban/compartían el material seleccionado en el resto de
+la app. La integración no sería pareja entre los 4 ensayos: Corrosión
+mapea casi 1:1 con materiales de PRESETS (Fe/Zn/Al/Cu/Ni/Mg/Ti);
+Polímeros solo parcialmente (nylon existe en PRESETS, el resto no);
+Desgaste no tan directo (el selector es de PARES de materiales, no de
+un material único); Tensiones residuales no aplica (el selector es
+geometría de roseta, no identidad de material).
+
+=================================================================
+
+## [3.17] — Testeo exhaustivo por etapas (13 etapas, 4 bugs corregidos)
+
+Plan de testeo cubriendo integridad estática, la suite interna de tests,
+los seis módulos de Ensayo destructivo, los siete de Ensayo no
+destructivo, los tres bloques de Fractura/Fatiga/Fluencia, sincronización
+entre pestañas, ficha técnica, exportación/progreso y responsive/UX.
+
+Corregido:
+- Mecánica de la fractura: una longitud de grieta (u otro campo: K_IC,
+  σ, Y) negativa, cero o vacía tipeada a mano hacía que K_I se calculara
+  como NaN y se mostrara literalmente en pantalla — y peor, el veredicto
+  cerraba en "✓ Grieta estable" por defecto (porque NaN >= kic es false
+  en JS), dándole al estudiante una falsa sensación de seguridad ante un
+  dato inválido. Ahora se valida antes de calcular (mismo criterio que ya
+  usaba Vickers/Knoop) y se muestra "— Datos incompletos" con un aviso
+  explicativo.
+- Larson-Miller (Fluencia): un tiempo de ensayo a rotura negativo, cero o
+  vacío producía log10 de un valor no positivo, propagando NaN a LMP y a
+  la vida estimada en servicio. Ahora se valida y se avisa.
+- Larson-Miller (Fluencia): una temperatura de ensayo por debajo del cero
+  absoluto (−273.15 °C) no tenía ningún clamp, a diferencia del mismo
+  problema ya resuelto en el módulo "Efecto temperatura". Ahora se
+  clampea a −273.15 °C y se avisa cuando se aplicó el clamp.
+- Ficha técnica — impresión: la ficha imprimía en 2 columnas en vez de 1,
+  pese a que el código ya documentaba ese fix (Fase 8, v3.14). Causa
+  raíz: la regla @media print{ .ficha{...} } tenía la misma especificidad
+  que la regla base .ficha{...} pero estaba escrita antes en el archivo,
+  así que la cascada CSS la ignoraba incluso durante impresión real. Se
+  resolvió subiendo la especificidad del selector (#fichaModal .ficha) en
+  vez de solo reordenar, para que no dependa de mantener el bloque en un
+  lugar específico ante futuros cambios.
+
+Verificado (sin cambios, ya funcionaba bien):
+Los ~63 tests de la suite interna siguen en verde tras las correcciones.
+Integridad estática completa (sintaxis JS de los 26 módulos, balance de
+tags/IDs, orden de carga de scripts, 331 IDs sin duplicados); motor de
+curvas de Tracción/Compresión sobre los 23 presets; Comparar materiales y
+Material compuesto (3 reglas de plausibilidad); Efecto temperatura y
+Configuraciones; Dureza no destructiva completa (Mohs, Rockwell,
+Brinell, Vickers/Knoop, conversión HRC↔HB↔TS, Janka, esclerómetro);
+Fatiga y el resto de Fluencia; sincronización de material entre las 9
+pestañas; ficha técnica con lectura cruzada; exportación de gráficos (9
+funciones) y progreso local; responsive/UX (detección de dispositivo,
+drawer mobile, modo desarrollador, los 123 botones de ayuda contextual).
+
+## [3.16] — Fase 10 (cierra el plan de mejoras): guardado/progreso local
+   - Nuevo módulo progreso.js: guardado/progreso local en localStorage +
+     exportación/importación de JSON (ambos mecanismos a la vez, a
+     pedido de la cátedra).
+   - "Retomar donde dejó": al cargar la página, restaura el último
+     material elegido en cada selector sincronizable (reusando
+     MATERIAL_SYNC_TARGETS de Fase 7, sin lista paralela nueva) y la
+     última pestaña principal activa.
+   - "Registro para entregar/evaluar": log de eventos con fecha/hora —
+     cambio de material, ficha técnica generada, gráfico exportado — con
+     tope de 200 eventos por sesión.
+   - Panel nuevo "📈 Mi progreso" accesible desde un botón de header en
+     cualquier pestaña: nombre del alumno (opcional), lista de eventos,
+     exportar a JSON, importar un JSON previamente exportado, y borrar el
+     progreso guardado.
+   - Todo el módulo es best-effort ante fallas de localStorage: la app
+     sigue funcionando normal, solo se pierde la persistencia.
+   - 4 tests nuevos, todos con respaldo/restauración del progreso real
+     del usuario para no perderlo al correr la suite.
+
+## [3.15] — Fase 9: Charpy — grano fino vs grueso (Hall-Petch)
+   - Nueva categoría de Charpy: acero al carbono de grano fino
+     (bajoCFino), junto a la ya existente de grano grueso (bajoC).
+     Efecto Hall-Petch: menor DBTT y mayor energía de meseta superior en
+     grano fino.
+   - Se evaluó y descartó sumar un polímero como 4ta familia: el Charpy
+     de polímeros (ISO 179) usa otra geometría de probeta y se reporta
+     en kJ/m², no en Joules como el Charpy metálico de este gráfico (eje
+     0-170 J) — mezclarlos no tendría sentido físico sin rediseñar el eje.
+   - Test de DBTT reescrito para recorrer todas las entradas de
+     FR_IMPACTO_PRESETS en loop según su flag hasDBTT, en vez de
+     hardcodear solo bajoC/fcc.
+   - Test nuevo que verifica que grano fino tenga menor Tmid (DBTT) y
+     mayor o igual Ehigh (meseta superior) que grano grueso.
+
+## [3.12] – [3.14] — Fases 6-8: dureza unificada, sync cruzado, pendientes chicos
+   - Fase 6a: Rockwell/Brinell/Vickers unificados con PRESETS[x].dureza
+     en vez de vivir como tablas aisladas.
+   - Fase 6b: exportación del gráfico de correlación TS-HB.
+   - Fase 7 — sync cruzado de material en vivo (material-sync.js nuevo):
+     botón "🔗 Aplicar a todos los ensayos" en Tracción, Compresión,
+     Temperatura, Rockwell, Brinell, Vickers, Janka, Esclerómetro y
+     Fatiga-Paris. Lee las <option> reales de cada <select> destino y
+     reusa las funciones applyX() existentes. Comparar y Compuesto
+     quedan afuera a propósito (manejan 2 materiales a la vez). Toast
+     con qué pestañas se aplicaron y cuáles no correspondían.
+   - Fase 8: fix del corte de columnas al imprimir la ficha
+     (@page{margin:12mm} + 1 columna en impresión); resumen S-N/Basquin
+     en la ficha solo para materiales con grado de referencia; K_IC
+     rápido de fractura lee PRESETS[x].frac.kic en vez de tabla
+     duplicada; evaluado y descartado acoplar las categorías de Charpy a
+     PRESETS (propiedad por familia cristalina, no por material puntual).
+   - v3.12: confirmados los 18 tests vigentes sin fallos; detectado (y
+     pospuesto a propósito) el bug de corte de columnas al imprimir —
+     resuelto después en Fase 8.
+
+## [3.11] — Reorganización del zip + 2 bugs de tests corregidos
+   - Corregidos 2 bugs reales en tests.js: ficha_graficos_fase5b y
+     ficha_compresion_cruzada reutilizaban el mismo <select
+     id="fichaMatSelect"> en loop sin reabrir el picker entre
+     materiales, y una excepción intermedia dejaba el modal de la ficha
+     abierto en pantalla. Fix: reabrir el picker antes de cada material +
+     try/finally para que closeFicha() corra siempre.
+   - Reorganización del zip: index.html en la raíz, todos los .js/.css
+     movidos a assets/ (con referencias actualizadas, incluido el loader
+     dinámico de tests.js).
+
+## [3.10] — Fase 5c: ficha técnica con lectura cruzada de Compresión
+   - La ficha técnica ahora lee co_preset/co_E/co_syc/co_sc/co_frag del
+     DOM de la pestaña Compresión: si el material cargado ahí coincide
+     con el de la ficha, reemplaza el aviso "sin datos" por los valores
+     reales + curva de compresión. Si no coincide, sigue mostrando el
+     aviso.
+
+## [3.9] — Fase 5b: gráficos dentro de la ficha técnica
+   - Cierra el plan de integración de Unidad 3. La ficha técnica agrega
+     hasta 4 mini-gráficos Chart.js: curva σ-ε (siempre), K_I vs a, da/dN
+     vs ΔK, ε̇_s vs T (solo si el material tiene ese dato). Se incluyen en
+     la impresión porque son canvas reales.
+
+## [3.8] — Fase 5a: datos .frac reales para 11 materiales más
+   - PRESETS.frac sumado a 11 materiales más (cobre, níquel, zinc,
+     plomo, molibdeno, tungsteno, latón, magnesio, fundición gris,
+     hormigón, nylon), cada uno solo con los datos que tienen sentido
+     físico real. 7 materiales quedan intencionalmente sin .frac por
+     falta de dato real aplicable (oro, plata, madera, pino, algarrobo,
+     quebracho, carbono).
+   - Corregida la condición de ejemplo de fluencia: antes usaba siempre
+     100 MPa/500°C para cualquier material, lo cual era físicamente
+     inválido para zinc/plomo (ya fundidos a esa T). Ahora usa
+     FICHA_CREEP_EJEMPLO con condición por material.
+
+## [3.6] — Fase 4: ficha técnica generalizada a cualquier material
+   - Generalizada a cualquier material desde un botón de header en
+     cualquier pestaña (antes solo existía para el ensayo de tracción
+     individual). Arma tracción real, dureza estimada y
+     fractura/fatiga/fluencia solo cuando el material tiene esos datos
+     en PRESETS.frac.
+   - Corregido que printFicha() no tenía @media print e imprimía toda la
+     app en vez de solo la ficha (bug preexistente desde v2.8).
+
+## [3.5] — Fase 3: exportación de gráficos de Unidad 3
+   - exportRoturaChart(filename) genérica en export.js + 9 botones
+     "Exportar imagen" en las 9 subsecciones de Unidad 3 con gráfico.
+
+## [3.4] — Fix de test desactualizado
+   - Corregido test dom_tabs, desactualizado desde antes de v3.1
+     (esperaba 2 tabs cuando ya había 3 desde que se agregó Unidad 3).
+
+## [3.3] — Fase 2: tests para Fractura/Fatiga/Fluencia
+   - Sumado el grupo "Fractura, fatiga y fluencia" a tests.js (8 casos).
+     Fórmulas puras extraídas para ser testeables:
+     frCalcKi/frCalcAcMm (fractura.js), flLarsonMillerP/flLarsonMillerTr
+     (fluencia.js).
+
+## [3.1] — Agregado el tab "Fractura, fatiga y fluencia" (Unidad 3)
+   - Tercera pestaña principal con sub-navegación en fractura.js,
+     fatiga.js, fluencia.js, rotura-shared.js: mecánica de la fractura
+     (K_IC), ensayo Charpy, tensiones cíclicas, curvas S-N, ley de Paris,
+     fluencia, Larson-Miller. En este punto todavía no estaba integrada
+     con el resto del simulador (materiales, tests, export) — eso fue el
+     trabajo de las Fases 1-8 (v3.3 a v3.14).
+
+## [2.8] — División en módulos
+   - Migración del archivo único de 4222 líneas a archivos separados
+     (styles.css, data-presets.js, módulos por ensayo, app.js, etc.) con
+     <script src> planos, sin bundler, para que siga funcionando tanto
+     abierto directo como servido desde un host.
+   - tests.js pasa a cargarse dinámicamente solo cuando se desbloquea el
+     modo dev (clicks en el número de versión), en vez de parsearse
+     siempre.
+   - dureza.js (668 líneas) dividido en 8 archivos por escala de dureza.
+
+## [~2.3] — Consolidación en arquitectura de 2 pestañas
+   (período: principios/mediados de julio)
+
+   Cambiado:
+   - Consolidación de seis secciones de simulación (tracción, compresión,
+     comparar materiales, efecto temperatura, material compuesto,
+     configuraciones) bajo una única pestaña superior "Ensayo
+     destructivo", y otras seis bajo "Ensayo no destructivo".
+     Arquitectura resultante de 2 pestañas limpias con sub-navegación.
+
+   Corregido:
+   - Estandarización de los desplegables de propiedades de material en
+     las cinco secciones del simulador, exponiendo una lista completa de
+     20 materiales con estructura optgroup consistente.
+   - Corrección de varios valores de preset de material contra
+     referencias de ingeniería reales: Aluminio 6061-T6, Titanio
+     Ti-6Al-4V, Hierro fundido gris, Magnesio AZ31.
+   - Reemplazo del material genérico "Roca/Piedra" por Madera de roble,
+     con valores realistas paralelos a la fibra.
+   - Corrección de un bug preexistente donde la resistencia a compresión
+     usaba incorrectamente la resistencia a tracción para materiales
+     asimétricos (hormigón, madera) — introducción del campo dedicado tsc.
+   - La suite de tests integrada se actualizó en paralelo a estos
+     cambios estructurales.
+
+## [~1.8 – 2.7] — QA inicial con harnesses de Node.js
+   - Rondas de QA con harnesses de Node.js. Bugs corregidos en
+     genCurve/genCompCurve: no-monotonicidad, propagación de NaN, XSS vía
+     nombres de configuración, sustitución silenciosa de inputs en cero.
+   - Mejoras al modo inverso: avisos ámbar y corrección de la estimación
+     de E.
+   - Versión fundacional: Sim_matyens_responsive.html.
+
+## [~Responsive2] — Auditoría técnica integral
+   (período: mediados de junio)
+
+   Corregido:
+   - 3 bugs críticos en el "modo inverso": inicialización frágil de
+     gráficos vía setTimeout; bug de closure en JavaScript que causaba
+     el rechazo silencioso de clics válidos del usuario; división por
+     cero en la regresión lineal del módulo de Young.
+   - Issues menores: valores incorrectos en presets de material, y falta
+     de validación normativa ASTM E9 — hallazgos que directamente
+     motivaron el trabajo posterior de corrección de materiales (ver
+     v2.3).
+
+## [~Responsive] — Adaptación de layout responsive
+   (período: previo a mediados de junio)
+
+   Agregado:
+   - Adaptación de layout responsive: drawer lateral en mobile, badge de
+     detección de dispositivo, media queries.
+   - Suite de tests automatizada integrada de 20 tests.
+
+=================================================================
+NOTAS SOBRE OTRAS CONVERSACIONES RELACIONADAS (no versionadas del simulador)
+=================================================================
+- Revisión de proyectos de simulación en Python de grupos de estudiantes
+  (trabajo de cátedra, no del propio Sim_MatyEns): chequeos de
+  cumplimiento contra requisitos técnicos (almacenamiento persistente en
+  .txt, login con PIN y bloqueos, logging con timestamps).
+- Exploración conceptual de redes neuronales en Python (MLPs,
+  arquitectura "diamante" de 10 capas, familias CNN/RNN/Transformer) —
+  tema aparte, sin relación con el simulador.

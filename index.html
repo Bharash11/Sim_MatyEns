@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- v3.1: agregado tab "Fractura, fatiga y fluencia" completo (Fractura, Fatiga y Fluencia en caliente con todos sus subtemas) -->
-<title>Simulador de Ensayos Mecánicos 4.8 — Materiales y Ensayos</title>
+<title>Simulador de Ensayos Mecánicos 4.11 — Materiales y Ensayos</title>
 <!-- FIX v4.8: PWA -- manifest + íconos + service worker (instalable y usable offline) -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1a5fa8">
@@ -15,7 +15,12 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Sim MatyEns">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<!-- FIX (QA — hallazgo Parte 1): SRI para blindar contra un compromiso del CDN.
+     Hash verificado para esta versión/archivo exactos (Chart.js 4.4.1, chart.umd.js).
+     Si en algún momento se sube de versión, hay que regenerar este hash (ej. con
+     https://www.srihash.org/) -- un hash viejo con un archivo nuevo simplemente
+     bloquea la carga del script, así que conviene probarlo tras cualquier upgrade. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" integrity="sha512-ZwR1/gSZM3ai6vCdI+LVF1zSq/5HznD3ZSTk7kajkaj4D292NLuduDCO1c/NT8Id+jE58KYLKT7hXnbtryGmMg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <link rel="stylesheet" href="assets/styles.css">
 </head>
 <body>
@@ -23,7 +28,7 @@
 
 <header>
   <h1>Simulador de Ensayos</h1>
-  <span class="ver" id="verBadge" onclick="handleVerBadgeClick()" style="cursor:default;user-select:none">4.8</span>
+  <span class="ver" id="verBadge" onclick="handleVerBadgeClick()" style="cursor:default;user-select:none">4.11</span>
   <span class="subtitle">Materiales y Ensayos</span>
   <button id="fichaHeaderBtn" onclick="openFichaPicker()" style="background:var(--accent);color:#fff;border:none;border-radius:var(--radius);padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;margin-left:auto">📋 Ficha técnica</button>
   <button id="progresoHeaderBtn" onclick="abrirProgreso()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer">📈 Mi progreso</button>
@@ -118,7 +123,27 @@
             <option value="quebracho">Quebracho colorado</option>
             <option value="nylon">Nylon PA6</option>
           </optgroup>
-        </select>
+                  <optgroup label="Materiales nuevos (v4.10)">
+            <option value="aisi1045">Acero AISI 1045 (normalizado)</option>
+            <option value="acero4140">Acero AISI 4140 (templado y revenido)</option>
+            <option value="inconel718">Inconel 718 (envejecido)</option>
+            <option value="aluminio7075">Aluminio 7075-T6</option>
+            <option value="aluminio2024">Aluminio 2024-T3</option>
+            <option value="broncefosforico">Bronce fosforado (CuSn8, temple duro)</option>
+            <option value="hierronodular">Hierro fundido nodular (dúctil) 60-40-18</option>
+            <option value="titaniocp2">Titanio CP Grado 2 (recocido)</option>
+            <option value="sic">Carburo de silicio (SiC)</option>
+            <option value="si3n4">Nitruro de silicio (Si₃N₄)</option>
+            <option value="zirconia">Óxido de zirconio 3Y-TZP (ZrO₂)</option>
+            <option value="gfrp">Fibra de vidrio (GFRP, unidireccional)</option>
+            <option value="kevlarepoxi">Fibra de aramida (Kevlar 49, unidireccional)</option>
+            <option value="hdpe">Polietileno alta densidad (HDPE)</option>
+            <option value="pp">Polipropileno homopolímero (PP)</option>
+            <option value="pvcrigido">PVC rígido (UPVC)</option>
+            <option value="abs">ABS</option>
+            <option value="pc">Policarbonato (PC)</option>
+          </optgroup>
+</select>
         <button type="button" class="btn-sync" onclick="syncMaterialToAllTests('e_preset')" title="Aplica el material elegido acá también en el resto de las pestañas que lo tengan disponible">🔗 Aplicar a todos los ensayos</button>
       </div>
       <div class="field"><label>Módulo de elasticidad <code>E</code> (GPa)<button type="button" class="help-btn" onclick="showHelp('E',event)">?</button></label>
@@ -222,7 +247,27 @@
             <option value="quebracho">Quebracho colorado</option>
             <option value="nylon">Nylon PA6</option>
           </optgroup>
-        </select>
+                  <optgroup label="Materiales nuevos (v4.10)">
+            <option value="aisi1045">Acero AISI 1045 (normalizado)</option>
+            <option value="acero4140">Acero AISI 4140 (templado y revenido)</option>
+            <option value="inconel718">Inconel 718 (envejecido)</option>
+            <option value="aluminio7075">Aluminio 7075-T6</option>
+            <option value="aluminio2024">Aluminio 2024-T3</option>
+            <option value="broncefosforico">Bronce fosforado (CuSn8, temple duro)</option>
+            <option value="hierronodular">Hierro fundido nodular (dúctil) 60-40-18</option>
+            <option value="titaniocp2">Titanio CP Grado 2 (recocido)</option>
+            <option value="sic">Carburo de silicio (SiC)</option>
+            <option value="si3n4">Nitruro de silicio (Si₃N₄)</option>
+            <option value="zirconia">Óxido de zirconio 3Y-TZP (ZrO₂)</option>
+            <option value="gfrp">Fibra de vidrio (GFRP, unidireccional)</option>
+            <option value="kevlarepoxi">Fibra de aramida (Kevlar 49, unidireccional)</option>
+            <option value="hdpe">Polietileno alta densidad (HDPE)</option>
+            <option value="pp">Polipropileno homopolímero (PP)</option>
+            <option value="pvcrigido">PVC rígido (UPVC)</option>
+            <option value="abs">ABS</option>
+            <option value="pc">Policarbonato (PC)</option>
+          </optgroup>
+</select>
         <button type="button" class="btn-sync" onclick="syncMaterialToAllTests('co_preset')" title="Aplica el material elegido acá también en el resto de las pestañas que lo tengan disponible">🔗 Aplicar a todos los ensayos</button>
       </div>
       <div class="field"><label>Módulo de elasticidad <code>E</code> (GPa)<button type="button" class="help-btn" onclick="showHelp('E',event)">?</button></label>
@@ -295,7 +340,27 @@
             <option value="quebracho">Quebracho colorado</option>
             <option value="nylon">Nylon PA6</option>
           </optgroup>
-        </select>
+                  <optgroup label="Materiales nuevos (v4.10)">
+            <option value="aisi1045">Acero AISI 1045 (normalizado)</option>
+            <option value="acero4140">Acero AISI 4140 (templado y revenido)</option>
+            <option value="inconel718">Inconel 718 (envejecido)</option>
+            <option value="aluminio7075">Aluminio 7075-T6</option>
+            <option value="aluminio2024">Aluminio 2024-T3</option>
+            <option value="broncefosforico">Bronce fosforado (CuSn8, temple duro)</option>
+            <option value="hierronodular">Hierro fundido nodular (dúctil) 60-40-18</option>
+            <option value="titaniocp2">Titanio CP Grado 2 (recocido)</option>
+            <option value="sic">Carburo de silicio (SiC)</option>
+            <option value="si3n4">Nitruro de silicio (Si₃N₄)</option>
+            <option value="zirconia">Óxido de zirconio 3Y-TZP (ZrO₂)</option>
+            <option value="gfrp">Fibra de vidrio (GFRP, unidireccional)</option>
+            <option value="kevlarepoxi">Fibra de aramida (Kevlar 49, unidireccional)</option>
+            <option value="hdpe">Polietileno alta densidad (HDPE)</option>
+            <option value="pp">Polipropileno homopolímero (PP)</option>
+            <option value="pvcrigido">PVC rígido (UPVC)</option>
+            <option value="abs">ABS</option>
+            <option value="pc">Policarbonato (PC)</option>
+          </optgroup>
+</select>
       </div>
       <div class="field"><label>E (GPa)<button type="button" class="help-btn" onclick="showHelp('E',event)">?</button></label><input type="number" id="c1_E" value="207" min="1" max="1000" step="1"></div>
       <div class="field"><label>σ_y (MPa)<button type="button" class="help-btn" onclick="showHelp('sy',event)">?</button></label><input type="number" id="c1_sy" value="250" min="0" max="3000" step="1"></div>
@@ -337,7 +402,27 @@
             <option value="quebracho">Quebracho colorado</option>
             <option value="nylon">Nylon PA6</option>
           </optgroup>
-        </select>
+                  <optgroup label="Materiales nuevos (v4.10)">
+            <option value="aisi1045">Acero AISI 1045 (normalizado)</option>
+            <option value="acero4140">Acero AISI 4140 (templado y revenido)</option>
+            <option value="inconel718">Inconel 718 (envejecido)</option>
+            <option value="aluminio7075">Aluminio 7075-T6</option>
+            <option value="aluminio2024">Aluminio 2024-T3</option>
+            <option value="broncefosforico">Bronce fosforado (CuSn8, temple duro)</option>
+            <option value="hierronodular">Hierro fundido nodular (dúctil) 60-40-18</option>
+            <option value="titaniocp2">Titanio CP Grado 2 (recocido)</option>
+            <option value="sic">Carburo de silicio (SiC)</option>
+            <option value="si3n4">Nitruro de silicio (Si₃N₄)</option>
+            <option value="zirconia">Óxido de zirconio 3Y-TZP (ZrO₂)</option>
+            <option value="gfrp">Fibra de vidrio (GFRP, unidireccional)</option>
+            <option value="kevlarepoxi">Fibra de aramida (Kevlar 49, unidireccional)</option>
+            <option value="hdpe">Polietileno alta densidad (HDPE)</option>
+            <option value="pp">Polipropileno homopolímero (PP)</option>
+            <option value="pvcrigido">PVC rígido (UPVC)</option>
+            <option value="abs">ABS</option>
+            <option value="pc">Policarbonato (PC)</option>
+          </optgroup>
+</select>
       </div>
       <div class="field"><label>E (GPa)<button type="button" class="help-btn" onclick="showHelp('E',event)">?</button></label><input type="number" id="c2_E" value="69" min="1" max="1000" step="1"></div>
       <div class="field"><label>σ_y (MPa)<button type="button" class="help-btn" onclick="showHelp('sy',event)">?</button></label><input type="number" id="c2_sy" value="28" min="0" max="3000" step="1"></div>
@@ -385,7 +470,27 @@
             <option value="quebracho">Quebracho colorado</option>
             <option value="nylon">Nylon PA6</option>
           </optgroup>
-        </select>
+                  <optgroup label="Materiales nuevos (v4.10)">
+            <option value="aisi1045">Acero AISI 1045 (normalizado)</option>
+            <option value="acero4140">Acero AISI 4140 (templado y revenido)</option>
+            <option value="inconel718">Inconel 718 (envejecido)</option>
+            <option value="aluminio7075">Aluminio 7075-T6</option>
+            <option value="aluminio2024">Aluminio 2024-T3</option>
+            <option value="broncefosforico">Bronce fosforado (CuSn8, temple duro)</option>
+            <option value="hierronodular">Hierro fundido nodular (dúctil) 60-40-18</option>
+            <option value="titaniocp2">Titanio CP Grado 2 (recocido)</option>
+            <option value="sic">Carburo de silicio (SiC)</option>
+            <option value="si3n4">Nitruro de silicio (Si₃N₄)</option>
+            <option value="zirconia">Óxido de zirconio 3Y-TZP (ZrO₂)</option>
+            <option value="gfrp">Fibra de vidrio (GFRP, unidireccional)</option>
+            <option value="kevlarepoxi">Fibra de aramida (Kevlar 49, unidireccional)</option>
+            <option value="hdpe">Polietileno alta densidad (HDPE)</option>
+            <option value="pp">Polipropileno homopolímero (PP)</option>
+            <option value="pvcrigido">PVC rígido (UPVC)</option>
+            <option value="abs">ABS</option>
+            <option value="pc">Policarbonato (PC)</option>
+          </optgroup>
+</select>
         <button type="button" class="btn-sync" onclick="syncMaterialToAllTests('t_preset')" title="Aplica el material elegido acá también en el resto de las pestañas que lo tengan disponible">🔗 Aplicar a todos los ensayos</button>
       </div>
       <div class="field"><label>E a 25°C (GPa)<button type="button" class="help-btn" onclick="showHelp('E',event)">?</button></label><input type="number" id="t_E" value="207" min="1" max="1000" step="1"></div>
@@ -441,7 +546,27 @@
             <option value="quebracho">Quebracho colorado</option>
             <option value="nylon">Nylon PA6</option>
           </optgroup>
-        </select>
+                  <optgroup label="Materiales nuevos (v4.10)">
+            <option value="aisi1045">Acero AISI 1045 (normalizado)</option>
+            <option value="acero4140">Acero AISI 4140 (templado y revenido)</option>
+            <option value="inconel718">Inconel 718 (envejecido)</option>
+            <option value="aluminio7075">Aluminio 7075-T6</option>
+            <option value="aluminio2024">Aluminio 2024-T3</option>
+            <option value="broncefosforico">Bronce fosforado (CuSn8, temple duro)</option>
+            <option value="hierronodular">Hierro fundido nodular (dúctil) 60-40-18</option>
+            <option value="titaniocp2">Titanio CP Grado 2 (recocido)</option>
+            <option value="sic">Carburo de silicio (SiC)</option>
+            <option value="si3n4">Nitruro de silicio (Si₃N₄)</option>
+            <option value="zirconia">Óxido de zirconio 3Y-TZP (ZrO₂)</option>
+            <option value="gfrp">Fibra de vidrio (GFRP, unidireccional)</option>
+            <option value="kevlarepoxi">Fibra de aramida (Kevlar 49, unidireccional)</option>
+            <option value="hdpe">Polietileno alta densidad (HDPE)</option>
+            <option value="pp">Polipropileno homopolímero (PP)</option>
+            <option value="pvcrigido">PVC rígido (UPVC)</option>
+            <option value="abs">ABS</option>
+            <option value="pc">Policarbonato (PC)</option>
+          </optgroup>
+</select>
       </div>
       <div class="field"><label>E₁ (GPa)<button type="button" class="help-btn" onclick="showHelp('E',event)">?</button></label><input type="number" id="k1_E" value="207" min="1" max="1000" step="1"></div>
       <div class="field"><label>σ_y₁ (MPa)<button type="button" class="help-btn" onclick="showHelp('sy',event)">?</button></label><input type="number" id="k1_sy" value="250" min="1" max="3000" step="1"></div>
@@ -483,7 +608,27 @@
             <option value="quebracho">Quebracho colorado</option>
             <option value="nylon">Nylon PA6</option>
           </optgroup>
-        </select>
+                  <optgroup label="Materiales nuevos (v4.10)">
+            <option value="aisi1045">Acero AISI 1045 (normalizado)</option>
+            <option value="acero4140">Acero AISI 4140 (templado y revenido)</option>
+            <option value="inconel718">Inconel 718 (envejecido)</option>
+            <option value="aluminio7075">Aluminio 7075-T6</option>
+            <option value="aluminio2024">Aluminio 2024-T3</option>
+            <option value="broncefosforico">Bronce fosforado (CuSn8, temple duro)</option>
+            <option value="hierronodular">Hierro fundido nodular (dúctil) 60-40-18</option>
+            <option value="titaniocp2">Titanio CP Grado 2 (recocido)</option>
+            <option value="sic">Carburo de silicio (SiC)</option>
+            <option value="si3n4">Nitruro de silicio (Si₃N₄)</option>
+            <option value="zirconia">Óxido de zirconio 3Y-TZP (ZrO₂)</option>
+            <option value="gfrp">Fibra de vidrio (GFRP, unidireccional)</option>
+            <option value="kevlarepoxi">Fibra de aramida (Kevlar 49, unidireccional)</option>
+            <option value="hdpe">Polietileno alta densidad (HDPE)</option>
+            <option value="pp">Polipropileno homopolímero (PP)</option>
+            <option value="pvcrigido">PVC rígido (UPVC)</option>
+            <option value="abs">ABS</option>
+            <option value="pc">Policarbonato (PC)</option>
+          </optgroup>
+</select>
       </div>
       <div class="field"><label>E₂ (GPa)<button type="button" class="help-btn" onclick="showHelp('E',event)">?</button></label><input type="number" id="k2_E" value="230" min="1" max="1000" step="1"></div>
       <div class="field"><label>TS₂ (MPa)<button type="button" class="help-btn" onclick="showHelp('ts',event)">?</button></label><input type="number" id="k2_ts" value="3500" min="1" max="10000" step="1"></div>
@@ -571,6 +716,8 @@
           <span class="leg"><span style="display:inline-block;width:14px;height:10px;background:var(--ten-fill);border:1px solid var(--plastic);border-radius:2px"></span>Tenacidad</span>
         </div>
       </div>
+      <div class="formula-mini">σ = E·ε (elástica) → σ_y + (TS−σ_y)·(1−(1−t)^1.7) (plástica) → TS − (TS−0,52·σ_y)·t^0.75 (estricción)</div>
+      <div class="note" style="margin:0 0 8px">t = progreso normalizado de la deformación dentro de cada tramo (no es tiempo). Las dos últimas son una curva de interpolación ajustada para reproducir la forma típica de un ensayo real (endurecimiento y luego ablandamiento hasta la fractura), no una única ley de manual (tipo Hollomon o Ramberg-Osgood). La zona elástica sí es la Ley de Hooke exacta.</div>
       <div class="chart-wrap"><canvas id="mainChart"></canvas></div>
       <div class="info-bar" id="infoBar">Configurá la probeta y el material, luego iniciá el ensayo.</div>
     </div>
@@ -619,6 +766,8 @@
           <span class="leg"><span class="leg-line" style="background:var(--frac)"></span>Falla</span>
         </div>
       </div>
+      <div class="formula-mini">σ = E·ε (elástica) → σ_yc + (σ_c−σ_yc)·(1−(1−t)^1.5) (fluencia/aplastamiento)</div>
+      <div class="note" style="margin:0 0 8px">t = progreso normalizado de la deformación dentro del tramo de fluencia (no es tiempo). Igual que en Tracción, es una curva de interpolación ajustada a la forma típica de aplastamiento, no una única ley de manual. La zona elástica es la Ley de Hooke exacta (con σ negativa por convención de compresión).</div>
       <div class="chart-wrap" style="height:300px"><canvas id="compChart"></canvas></div>
       <div class="info-bar" id="co_infoBar">Configurá el material y comenzá el ensayo de compresión.</div>
     </div>
@@ -739,7 +888,7 @@
 
     <!-- 2 ROCKWELL -->
     <div class="sec dz-sub-ctrl" id="dz_ctrl_rockwell">
-      <div class="sec-title">Ensayo Rockwell</div>
+      <div class="sec-title">Ensayo Rockwell<button type="button" class="help-btn" onclick="showHelp('dz_rockwell',event)">?</button></div>
       <div class="field"><label>Material (opcional — carga un ensayo de referencia)</label>
         <select id="dz_rkMat" onchange="dzApplyRockwellMaterial()">
           <option value="">— Sin material (exploración libre) —</option>
@@ -754,6 +903,14 @@
           <option value="zinc">Zinc (HRB)</option>
           <option value="tungsteno">Tungsteno (HRC)</option>
           <option value="laton">Latón (HRB)</option>
+          <option value="aisi1045">Acero AISI 1045 (HRB)</option>
+          <option value="acero4140">Acero AISI 4140 (HRC)</option>
+          <option value="aluminio7075">Aluminio 7075-T6 (HRB)</option>
+          <option value="aluminio2024">Aluminio 2024-T3 (HRB)</option>
+          <option value="broncefosforico">Bronce fosforado CuSn8 (HRB)</option>
+          <option value="hierronodular">Hierro fundido nodular (HRB)</option>
+          <option value="inconel718">Inconel 718 (HRC)</option>
+          <option value="titaniocp2">Titanio CP Grado 2 (HRB)</option>
         </select>
         <button type="button" class="btn-sync" onclick="syncMaterialToAllTests('dz_rkMat')" title="Aplica el material elegido acá también en el resto de las pestañas que lo tengan disponible">🔗 Aplicar a todos los ensayos</button>
       </div>
@@ -773,7 +930,7 @@
 
     <!-- 3 BRINELL -->
     <div class="sec dz-sub-ctrl" id="dz_ctrl_brinell">
-      <div class="sec-title">Ensayo Brinell</div>
+      <div class="sec-title">Ensayo Brinell<button type="button" class="help-btn" onclick="showHelp('dz_brinell',event)">?</button></div>
       <div class="field"><label>Material (opcional — carga un ensayo de referencia)</label>
         <select id="dz_brMat" onchange="dzApplyBrinellMaterial()">
           <option value="">— Sin material (exploración libre) —</option>
@@ -791,6 +948,13 @@
           <option value="laton">Latón</option>
           <option value="plata">Plata</option>
           <option value="oro">Oro</option>
+          <option value="aisi1045">Acero AISI 1045</option>
+          <option value="acero4140">Acero AISI 4140</option>
+          <option value="aluminio7075">Aluminio 7075-T6</option>
+          <option value="aluminio2024">Aluminio 2024-T3</option>
+          <option value="broncefosforico">Bronce fosforado CuSn8</option>
+          <option value="hierronodular">Hierro fundido nodular</option>
+          <option value="titaniocp2">Titanio CP Grado 2</option>
         </select>
         <button type="button" class="btn-sync" onclick="syncMaterialToAllTests('dz_brMat')" title="Aplica el material elegido acá también en el resto de las pestañas que lo tengan disponible">🔗 Aplicar a todos los ensayos</button>
       </div>
@@ -808,7 +972,7 @@
 
     <!-- 4 MICRODUREZA -->
     <div class="sec dz-sub-ctrl" id="dz_ctrl_micro">
-      <div class="sec-title">Vickers</div>
+      <div class="sec-title">Vickers<button type="button" class="help-btn" onclick="showHelp('dz_vickers',event)">?</button></div>
       <div class="field"><label>Material (opcional — carga un ensayo de referencia)</label>
         <select id="dz_vMat" onchange="dzApplyVickersMaterial()">
           <option value="">— Sin material (exploración libre) —</option>
@@ -827,20 +991,29 @@
           <option value="laton">Latón</option>
           <option value="plata">Plata</option>
           <option value="oro">Oro</option>
+          <option value="aisi1045">Acero AISI 1045</option>
+          <option value="aluminio7075">Aluminio 7075-T6</option>
+          <option value="aluminio2024">Aluminio 2024-T3</option>
+          <option value="broncefosforico">Bronce fosforado CuSn8</option>
+          <option value="hierronodular">Hierro fundido nodular</option>
+          <option value="titaniocp2">Titanio CP Grado 2</option>
+          <option value="sic">Carburo de silicio (SiC)</option>
+          <option value="si3n4">Nitruro de silicio (Si₃N₄)</option>
+          <option value="zirconia">Óxido de zirconio 3Y-TZP</option>
         </select>
         <button type="button" class="btn-sync" onclick="syncMaterialToAllTests('dz_vMat')" title="Aplica el material elegido acá también en el resto de las pestañas que lo tengan disponible">🔗 Aplicar a todos los ensayos</button>
       </div>
       <div class="field"><label>Carga P (gf)</label><input type="number" id="dz_vP" value="100" min="1" oninput="dzUpdateMicro()"></div>
       <div class="field"><label>Diagonal promedio d₁ (mm)</label><input type="number" id="dz_vD" value="0.03" step="0.01" min="0.01" oninput="dzUpdateMicro()"></div>
       <div class="note">Fibra de carbono no está en la lista: un compuesto no tiene una única dureza de conjunto que tenga sentido citar (la fibra y la resina tienen durezas muy distintas entre sí).</div>
-      <div class="sec-title" style="margin-top:14px">Knoop</div>
+      <div class="sec-title" style="margin-top:14px">Knoop<button type="button" class="help-btn" onclick="showHelp('dz_knoop',event)">?</button></div>
       <div class="field"><label>Carga P (gf)</label><input type="number" id="dz_kP" value="100" min="1" oninput="dzUpdateMicro()"></div>
       <div class="field"><label>Longitud mayor l (mm)</label><input type="number" id="dz_kL" value="0.08" step="0.01" min="0.01" oninput="dzUpdateMicro()"></div>
     </div>
 
     <!-- 5 CONVERSION -->
     <div class="sec dz-sub-ctrl" id="dz_ctrl_conv">
-      <div class="sec-title">Conversión de dureza</div>
+      <div class="sec-title">Conversión de dureza<button type="button" class="help-btn" onclick="showHelp('dz_conv',event)">?</button></div>
       <div class="field"><label>Escala de entrada</label>
         <select id="dz_convScale" onchange="dzUpdateConvRange()">
           <option value="hrc">Rockwell C (HRC)</option>
@@ -855,7 +1028,7 @@
 
     <!-- 6 CORRELACION TS -->
     <div class="sec dz-sub-ctrl" id="dz_ctrl_ts">
-      <div class="sec-title">Correlación con TS</div>
+      <div class="sec-title">Correlación con TS<button type="button" class="help-btn" onclick="showHelp('dz_ts',event)">?</button></div>
       <div class="field"><label>Dureza Brinell HB — <span id="dz_tsVal">200</span></label>
         <input type="range" id="dz_tsSlider" min="50" max="500" value="200" oninput="dzUpdateTS()">
       </div>
@@ -865,7 +1038,7 @@
 
     <!-- 7 JANKA -->
     <div class="sec dz-sub-ctrl" id="dz_ctrl_janka">
-      <div class="sec-title">Ensayo Janka (madera)</div>
+      <div class="sec-title">Ensayo Janka (madera)<button type="button" class="help-btn" onclick="showHelp('dz_janka',event)">?</button></div>
       <div class="field"><label>Especie de madera (opcional — carga un ensayo de referencia)</label>
         <select id="dz_jkMat" onchange="dzApplyJankaMaterial()">
           <option value="">— Sin material (exploración libre) —</option>
@@ -884,7 +1057,7 @@
 
     <!-- 8 ESCLEROMETRO -->
     <div class="sec dz-sub-ctrl" id="dz_ctrl_esclero">
-      <div class="sec-title">Esclerómetro (martillo de Schmidt)</div>
+      <div class="sec-title">Esclerómetro (martillo de Schmidt)<button type="button" class="help-btn" onclick="showHelp('dz_esclero',event)">?</button></div>
       <div class="field"><label>Material (opcional — carga un ensayo de referencia)</label>
         <select id="dz_scMat" onchange="dzApplyScleroMaterial()">
           <option value="">— Sin material (exploración libre) —</option>
@@ -968,6 +1141,7 @@
     <div class="dz-sub-panel" id="dz_panel_brinell">
       <div class="chart-card">
         <div class="chart-title">Ensayo Brinell</div>
+        <div class="formula-mini">HB = 2P / [ πD (D − √(D² − d²)) ]</div>
         <div class="note" style="margin-top:0">A diferencia del Rockwell (profundidad), el Brinell mide el <em>diámetro</em> de la huella. Penetrador esférico D = 10,00 mm; cargas normalizadas de 500 a 3000 kg.</div>
         <div class="results-grid">
           <div class="rcard" style="grid-column:1/-1"><div class="rl">FÓRMULA</div><div class="rv" style="font-size:12px">HB = 2P / [ πD (D − √(D² − d²)) ]</div></div>
@@ -988,6 +1162,7 @@
     <div class="dz-sub-panel" id="dz_panel_micro">
       <div class="chart-card">
         <div class="chart-title">Microdureza — Vickers y Knoop</div>
+        <div class="formula-mini">HV = 1,854 · P / d₁² &nbsp; · &nbsp; HK = 14,2 · P / l²</div>
         <div class="note" style="margin-top:0">Penetrador piramidal de diamante. Se usan para materiales muy pequeños o frágiles (p. ej. cerámicos), con huella medida al microscopio.</div>
         <div class="results-grid">
           <div class="rcard"><div class="rl">HV = 1,854·P/d₁²</div><div class="rv" id="dz_vResult">—</div></div>
@@ -1020,6 +1195,7 @@
       </div>
       <div class="chart-card">
         <div class="chart-title">Resistencia a la tracción vs. HB</div>
+        <div class="formula-mini">TS (MPa) = 3,45 · HB</div>
         <div class="chart-wrap" style="height:220px"><canvas id="dz_tsChart"></canvas></div>
       </div>
     </div>
@@ -1715,6 +1891,13 @@
     </div>
 
     <div class="cm-sub-panel active" id="cm_panel_desgaste">
+      <div class="chart-card">
+        <div class="chart-title">¿Qué es el desgaste?</div>
+        <div class="note" style="margin-top:0">El desgaste es la pérdida progresiva de material de una superficie sólida por su movimiento relativo respecto a otra superficie o sustancia en contacto. A escala microscópica, dos superficies "lisas" solo se tocan realmente en las puntas de sus rugosidades (asperezas) — el área de contacto real es mucho menor que el área aparente. Es en esos puntos de contacto donde se concentra toda la carga y ocurre el desgaste.</div>
+        <div class="note">Existen varios mecanismos, y el simulador modela el más común entre superficies metálicas deslizantes:</div>
+        <div class="note"><b>Adhesivo</b> — las asperezas en contacto se sueldan en frío por la presión y luego se cortan al deslizar, arrancando pequeñas partículas (es el que describe la ley de Archard de este simulador). <b>Abrasivo</b> — partículas duras (del propio desgaste, o contaminantes externos) actúan como una lija microscópica y cortan surcos. <b>Por fatiga superficial (pitting)</b> — ciclos repetidos de contacto rodante generan grietas subsuperficiales que terminan desprendiendo partículas (típico de engranajes y rodamientos). <b>Corrosivo</b> — el desgaste mecánico retira la capa de óxido protectora repetidamente, acelerando el ataque químico.</div>
+        <div class="note">Por qué importa: el desgaste es la causa de falla dominante en piezas con movimiento relativo continuo — cojinetes, engranajes, guías, herramientas de corte, neumáticos. La ley de Archard predice que el volumen perdido es proporcional a la carga y a la distancia recorrida, e inversamente proporcional a la dureza del material más blando del par — por eso el endurecimiento superficial (cementado, nitrurado, temple) es una estrategia habitual de diseño anti-desgaste.</div>
+      </div>
       <div class="metrics-row">
         <div class="mcard"><div class="ml">Coeficiente de desgaste <code>k</code></div><div class="mv" id="ds_mK">—</div><div class="ms">adimensional</div></div>
         <div class="mcard"><div class="ml">Volumen desgastado <code>V</code></div><div class="mv" id="ds_mVolumen">—</div><div class="ms">mm³</div></div>
@@ -1742,6 +1925,12 @@
     </div>
 
     <div class="cm-sub-panel" id="cm_panel_tensiones">
+      <div class="chart-card">
+        <div class="chart-title">¿Qué son las tensiones residuales?</div>
+        <div class="note" style="margin-top:0">Son tensiones que quedan "atrapadas" dentro de una pieza aun sin ninguna carga externa aplicada — se autoequilibran entre distintas zonas del material (donde una región queda traccionada, otra vecina queda comprimida para compensar). Se originan porque distintas zonas de la pieza se deforman de manera no uniforme durante su fabricación: enfriamiento desparejo tras una colada o una soldadura, deformación plástica desigual al conformar en frío (laminado, forjado, plegado), un tratamiento térmico (temple) o un mecanizado que retira material de forma asimétrica.</div>
+        <div class="note">No siempre son un problema — de hecho, se las puede inducir a propósito. El <b>granallado (shot peening)</b> genera tensiones residuales de compresión en la superficie, que se restan a la tensión de tracción del servicio real y así mejoran notablemente la vida a fatiga (por eso se aplica en resortes y componentes aeronáuticos). En cambio, tensiones residuales de tracción sin querer — típicas de un cordón de soldadura mal aliviado — se suman a la carga de servicio y pueden favorecer la fisuración, incluida la corrosión bajo tensión.</div>
+        <div class="note">El método del agujero (hole-drilling, ASTM E837) las mide de forma semidestructiva: se pega una roseta de 3 galgas extensométricas sobre la superficie, se perfora un agujero pequeño y poco profundo justo en su centro, y se mide cuánto se relaja (se deforma) el material alrededor a medida que ese material perforado deja de sostener la tensión que tenía. Esas 3 lecturas de relajación son las incógnitas que, junto con las constantes de calibración de la geometría de la roseta, permiten reconstruir la magnitud y la orientación de las tensiones principales que existían antes de perforar — el mismo cálculo que resume el círculo de Mohr de más abajo.</div>
+      </div>
       <div class="metrics-row">
         <div class="mcard"><div class="ml">Tensión principal máxima <code>σ_max</code></div><div class="mv" id="tr_mSigmaMax">—</div><div class="ms">MPa</div></div>
         <div class="mcard"><div class="ml">Tensión principal mínima <code>σ_min</code></div><div class="mv" id="tr_mSigmaMin">—</div><div class="ms">MPa</div></div>
@@ -1757,6 +1946,12 @@
     </div>
 
     <div class="cm-sub-panel" id="cm_panel_corrosion">
+      <div class="chart-card">
+        <div class="chart-title">¿Qué es la corrosión?</div>
+        <div class="note" style="margin-top:0">La corrosión es el deterioro de un metal por una reacción electroquímica con su entorno (humedad, agua, atmósfera, suelo). No es un simple "desgaste" mecánico: es una reacción real de oxidación-reducción, igual que en una pila. En una zona (ánodo) el metal se oxida y pasa a la solución como ion, liberando electrones (Fe → Fe²⁺ + 2e⁻); en otra zona cercana (cátodo) esos electrones se consumen, típicamente reduciendo oxígeno disuelto. Esa corriente eléctrica que circula entre ánodo y cátodo (i_corr, la que se ajusta en este ensayo) es, literalmente, la velocidad a la que el metal se está disolviendo — por eso la ley de Faraday (que relaciona corriente y masa disuelta en cualquier proceso electroquímico) permite calcular directamente la velocidad de pérdida de espesor.</div>
+        <div class="note">Este simulador está acotado a corrosión <b>general/uniforme</b> (toda la superficie se corroe parejo, como una chapa de hierro oxidándose al aire libre), que es la más fácil de predecir y de la que existe una fórmula cerrada simple. En la práctica también existen formas de corrosión <b>localizada</b>, mucho más peligrosas porque concentran el ataque en un punto y son difíciles de detectar a tiempo: <b>picado (pitting)</b> — pequeños poros profundos, típico del acero inoxidable en presencia de cloruros; <b>por rendija (crevice)</b> — en uniones apretadas donde no llega oxígeno; <b>galvánica</b> — cuando dos metales distintos están en contacto eléctrico en presencia de un electrolito, y el menos noble se sacrifica; <b>intergranular</b> — avanza preferentemente por los bordes de grano; <b>bajo tensión (SCC)</b> — la combinación de un ambiente corrosivo y una tensión de tracción sostenida agrieta el material a tensiones muy por debajo de su resistencia normal.</div>
+        <div class="note">Por qué importa en ingeniería: el "sobreespesor de corrosión" (corrosion allowance) es una práctica de diseño estándar en cañerías, tanques y estructuras que van a estar expuestas — se calcula, a partir de una velocidad de corrosión esperada como la de este ensayo, cuánto espesor "de sacrificio" hay que sumarle a la pieza para que siga siendo segura al final de su vida útil de servicio.</div>
+      </div>
       <div class="metrics-row">
         <div class="mcard"><div class="ml">Velocidad de corrosión <code>CR</code></div><div class="mv" id="cr_mVelocidad">—</div><div class="ms">mm/año</div></div>
         <div class="mcard"><div class="ml">Pérdida de espesor acumulada</div><div class="mv" id="cr_mPerdida">—</div><div class="ms">mm</div></div>
@@ -1783,6 +1978,12 @@
     </div>
 
     <div class="cm-sub-panel" id="cm_panel_polimeros">
+      <div class="chart-card">
+        <div class="chart-title">¿Qué es un ensayo DMA?</div>
+        <div class="note" style="margin-top:0">A diferencia de un metal, un polímero es <b>viscoelástico</b>: su respuesta mecánica combina una parte elástica (como un resorte, recupera la energía) y una parte viscosa (como un amortiguador, disipa energía como calor), y esa mezcla depende fuertemente de la temperatura y de la velocidad de solicitación — muy distinto a un ensayo de tracción de un metal, donde E prácticamente no cambia con la temperatura de servicio habitual.</div>
+        <div class="note">El Análisis Mecánico Dinámico (DMA) caracteriza esto aplicando una deformación oscilatoria pequeña (senoidal) a distintas temperaturas y midiendo la respuesta. De esa respuesta se separan dos componentes: el <b>módulo de almacenamiento E'</b> (la parte en fase con la deformación — la energía elástica que el material devuelve, y la que grafica este simulador) y el <b>módulo de pérdida E''</b> (la parte fuera de fase — la energía que se disipa como calor en cada ciclo). Su cociente, tan δ = E''/E', es una medida de cuánto "amortigua" el material — máxima justo en la transición vítrea, y es la base de aplicaciones como aislantes de vibración o suelas de calzado.</div>
+        <div class="note">La <b>temperatura de transición vítrea T_g</b> marca el cambio más importante: por debajo de T_g las cadenas moleculares están "congeladas" y el polímero es rígido y a veces frágil (estado vítreo, E' del orden de GPa, similar a un metal); al superar T_g las cadenas ganan movilidad y el material se vuelve blando y flexible (estado gomoso, E' cae hasta 3-4 órdenes de magnitud, a veces hasta el rango de MPa). Por eso T_g es el dato de selección de material más importante en polímeros: un sello de goma (caucho, T_g muy baja) tiene que quedar siempre por encima de su T_g para seguir siendo flexible en servicio, mientras que un caño rígido de PVC tiene que quedarse siempre por debajo de la suya para no reblandecerse.</div>
+      </div>
       <div class="metrics-row">
         <div class="mcard"><div class="ml">Temperatura de transición vítrea <code>T_g</code></div><div class="mv" id="po_mTg">—</div><div class="ms">°C</div></div>
         <div class="mcard"><div class="ml">Módulo de almacenamiento <code>E'</code></div><div class="mv" id="po_mModulo">—</div><div class="ms">MPa</div></div>

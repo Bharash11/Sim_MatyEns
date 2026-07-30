@@ -38,6 +38,23 @@ const testSuite = [
     }
   },
   {
+    // FIX (QA — hallazgo Parte 7): equivalente de presets_nuevos para los 18
+    // materiales agregados en v4.10 (Materiales_nuevos_Sim_MatyEns.md), que
+    // hasta ahora no tenían un test dedicado que verificara su sola presencia.
+    id: 'presets_v4_10', group: 'Motor de curvas',
+    name: 'PRESETS v4.10 — los 18 materiales nuevos están presentes',
+    run: () => {
+      const requeridos = [
+        'aisi1045','acero4140','aluminio7075','aluminio2024','broncefosforico',
+        'hierronodular','inconel718','titaniocp2','sic','si3n4','zirconia',
+        'gfrp','kevlarepoxi','hdpe','pp','pvcrigido','abs','pc'
+      ];
+      const faltantes = requeridos.filter(k => !PRESETS[k]);
+      if (faltantes.length) return { ok: false, msg: `Faltantes: ${faltantes.join(', ')}` };
+      return { ok: true, msg: `${requeridos.length} materiales de v4.10 ✓` };
+    }
+  },
+  {
     id: 'curve_fluencia', group: 'Motor de curvas',
     name: 'genCurve — Discontinuidad de fluencia',
     run: () => {
@@ -373,7 +390,7 @@ const testSuite = [
   },
   {
     id: 'dz_vickers_ref_table', group: 'Dureza',
-    name: 'VICKERS_REF — los 15 pares (P,d) reproducen su HV declarado (FIX #34)',
+    name: 'VICKERS_REF — todos los pares (P,d) reproducen su HV declarado (FIX #34)',
     run: () => {
       const bad = [];
       for (const [name, ref] of Object.entries(VICKERS_REF)) {
@@ -382,6 +399,47 @@ const testSuite = [
       }
       if (bad.length) return { ok: false, msg: bad.join(' | ') };
       return { ok: true, msg: `${Object.keys(VICKERS_REF).length} materiales OK (<2% de diferencia) ✓` };
+    }
+  },
+  {
+    // FIX (QA — hallazgo Parte 7): equivalente de dz_vickers_ref_table para
+    // Brinell. Sin este test, un futuro cambio en PRESETS[x].dureza.hb sin
+    // actualizar el (p,d) correspondiente en BRINELL_PD pasaría desapercibido.
+    id: 'dz_brinell_ref_table', group: 'Dureza',
+    name: 'BRINELL_REF — todos los pares (P,d,D=10mm) reproducen su HB declarado',
+    run: () => {
+      const D = 10, bad = [];
+      for (const [name, ref] of Object.entries(BRINELL_REF)) {
+        const HB = (2*ref.p) / (Math.PI*D*(D - Math.sqrt(D*D - ref.d*ref.d)));
+        if (Math.abs(HB-ref.hb)/ref.hb*100 > 2) bad.push(`${name}: HB calc=${HB.toFixed(1)} vs tabla=${ref.hb}`);
+      }
+      if (bad.length) return { ok: false, msg: bad.join(' | ') };
+      return { ok: true, msg: `${Object.keys(BRINELL_REF).length} materiales OK (<2% de diferencia) ✓` };
+    }
+  },
+  {
+    // FIX (QA — hallazgo Parte 7): equivalente para Rockwell. Acá no hay una
+    // fórmula física cerrada (el control es ilustrativo, según su propio texto
+    // de ayuda), pero SÍ hay una fórmula fija que usa dzUpdateRk() para pasar
+    // de "slider" a HR -- este test reproduce esa misma fórmula y verifica
+    // que cada (slider, escala) siga cayendo dentro de los ±5 puntos que la
+    // propia UI considera "cerca" (mismo umbral que usa dzUpdateRk() al
+    // comparar con la referencia bibliográfica).
+    id: 'dz_rockwell_ref_table', group: 'Dureza',
+    name: 'ROCKWELL_REF — todos los (slider, escala) reproducen su HR declarado (±5 pts)',
+    run: () => {
+      const bad = [];
+      for (const [name, ref] of Object.entries(ROCKWELL_REF)) {
+        const row = DZ_RK_NORMAL.find(r => r[0] === ref.scale);
+        if (!row) { bad.push(`${name}: escala ${ref.scale} no está en DZ_RK_NORMAL`); continue; }
+        const cm = row[2];
+        const loadFactor = Math.sqrt(cm / 150);
+        const depthRaw = (100 - ref.slider) * loadFactor;
+        const hrCalc = Math.max(0, Math.min(100, Math.round(100 - depthRaw*0.95)));
+        if (Math.abs(hrCalc - ref.hr) > 5) bad.push(`${name}: HR${ref.scale} calc=${hrCalc} vs tabla=${ref.hr}`);
+      }
+      if (bad.length) return { ok: false, msg: bad.join(' | ') };
+      return { ok: true, msg: `${Object.keys(ROCKWELL_REF).length} materiales OK (±5 pts) ✓` };
     }
   },
   {

@@ -11,6 +11,17 @@ const BRINELL_PD = {
   niquel:{p:1000,d:4.15}, molibdeno:{p:3000,d:4.75}, magnesio:{p:500,d:3.50},
   zinc:{p:500,d:4.15}, tungsteno:{p:3000,d:3.85}, laton:{p:500,d:3.35},
   plata:{p:500,d:4.90}, oro:{p:500,d:4.90},
+  // FIX (v4.10): mismos criterios de P que ya usaba esta tabla -- ferrosos/
+  // duros con P=3000 (aisi1045, acero4140, hierronodular, titaniocp2, igual
+  // que acero/titanio/molibdeno), no ferrosos blandos con P=500 (aluminio7075,
+  // aluminio2024, broncefosforico, igual que aluminio/cobre/laton). d se
+  // despejó de la fórmula HB=2P/[πD(D−√(D²−d²))] para reproducir el HB de
+  // PRESETS[x].dureza.hb con esa carga. Inconel 718 queda afuera: no se
+  // encontró un HB confiable para esa condición (solo HRC, ver Rockwell).
+  aisi1045:{p:3000,d:4.49}, acero4140:{p:3000,d:3.46},
+  aluminio7075:{p:500,d:2.05}, aluminio2024:{p:500,d:2.29},
+  broncefosforico:{p:500,d:2.05}, hierronodular:{p:3000,d:4.67},
+  titaniocp2:{p:3000,d:4.74},
 };
 const BRINELL_REF = {};
 for (const [key, pd] of Object.entries(BRINELL_PD)) {

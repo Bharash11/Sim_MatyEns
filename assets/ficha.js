@@ -24,7 +24,19 @@ const MATERIAL_LABELS = {
   oro:'Oro', plata:'Plata', plomo:'Plomo',
   fragil:'Hierro fundido gris (frágil)', ceramica:'Cerámica Al₂O₃', carbono:'Fibra de carbono',
   hormigon:'Hormigón', madera:'Madera de roble', pino:'Pino', algarrobo:'Algarrobo',
-  quebracho:'Quebracho colorado', nylon:'Nylon PA6'
+  quebracho:'Quebracho colorado', nylon:'Nylon PA6',
+  // FIX (v4.10): 18 materiales nuevos, mismos nombres visibles que ya usan
+  // e_preset/co_preset/dz_*Mat (ver index.html).
+  aisi1045:'Acero AISI 1045 (normalizado)', acero4140:'Acero AISI 4140 (templado y revenido)',
+  aluminio7075:'Aluminio 7075-T6', aluminio2024:'Aluminio 2024-T3',
+  broncefosforico:'Bronce fosforado (CuSn8, temple duro)',
+  hierronodular:'Hierro fundido nodular (dúctil) 60-40-18',
+  inconel718:'Inconel 718 (envejecido)', titaniocp2:'Titanio CP Grado 2 (recocido)',
+  sic:'Carburo de silicio (SiC)', si3n4:'Nitruro de silicio (Si₃N₄)',
+  zirconia:'Óxido de zirconio 3Y-TZP (ZrO₂)',
+  gfrp:'Fibra de vidrio (GFRP, unidireccional)', kevlarepoxi:'Fibra de aramida (Kevlar 49, unidireccional)',
+  hdpe:'Polietileno alta densidad (HDPE)', pp:'Polipropileno homopolímero (PP)',
+  pvcrigido:'PVC rígido (UPVC)', abs:'ABS', pc:'Policarbonato (PC)',
 };
 
 // FIX (Fase 5a): la condición de ejemplo para fluencia (σ, T) no puede ser la

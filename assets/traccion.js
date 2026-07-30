@@ -637,6 +637,7 @@ function buildCurve(){
 
   document.getElementById('formulasNote').innerHTML=`
     <strong>Cálculos explícitos:</strong><br>
+    l_f = l₀ + %EL·l₀ = ${l0} + ${el}%×${l0} = <strong>${(l0+el_frac*l0).toFixed(2)} mm</strong> (l_f se reconstruye a partir del %EL cargado, no es una medición independiente; en un ensayo real es al revés: se mide l_f después de la rotura y con eso se calcula el %EL)<br>
     %EL = (l_f − l₀)/l₀ × 100 = (${(l0+el_frac*l0).toFixed(2)} − ${l0}) / ${l0} × 100 = <strong>${el}%</strong><br>
     * %AR es una <em>aproximación empírica simplificada</em> (correlación con %EL). El valor real depende de la geometría y el endurecimiento por deformación.<br>
     Módulo de resiliencia U_R = σ_y²/(2E) → ${UR_formula}<br>
@@ -704,7 +705,7 @@ function showFicha() {
   <div class="ficha-header">
     <div>
       <div class="ficha-title">Informe de Ensayo de Tracción</div>
-      <div class="ficha-meta">Fecha: ${now} — Simulador de Ensayos Mecánicos v4.8</div>
+      <div class="ficha-meta">Fecha: ${now} — Simulador de Ensayos Mecánicos v4.11</div>
     </div>
     <div style="text-align:right">
       <div class="ficha-badge ${frag?'badge-fragil':'badge-ductil'}">${frag?'MATERIAL FRÁGIL':'MATERIAL DÚCTIL'}</div>

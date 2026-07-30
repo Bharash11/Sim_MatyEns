@@ -19,13 +19,44 @@ const PRESETS = {
   niquel:     {E:200,  sy:138,  ts:480,  el:40,  nu:0.31, fragil:false},
   aceroinox:  {E:193,  sy:207,  ts:517,  el:40,  nu:0.27, fragil:false},
   molibdeno:  {E:330,  sy:565,  ts:655,  el:35,  nu:0.28, fragil:false},
-  magnesio:   {E:45,   sy:97,   ts:220,  el:12,  nu:0.29, fragil:false},
+  // FIX (QA — hallazgo Parte 6): sy estaba en 97 MPa, que corresponde al límite de
+  // fluencia en COMPRESIÓN (CYS) de AZ31, no al de TRACCIÓN (TYS, ~150 MPa para
+  // AZ31-F) usado en este campo para todos los demás materiales. El magnesio (HCP)
+  // tiene una asimetría tracción/compresión marcada por maclado, fácil de confundir
+  // al cargar una tabla. AGUS: verificar contra la tabla/fuente original antes de dar
+  // por definitivo — 150 es un valor típico de literatura (ASM) para AZ31-F, no el
+  // dato exacto de la cátedra si difiere.
+  magnesio:   {E:45,   sy:150,  ts:220,  el:12,  nu:0.29, fragil:false},
   zinc:       {E:105,  sy:120,  ts:200,  el:8,   nu:0.25, fragil:false},
   plata:      {E:76,   sy:55,   ts:170,  el:40,  nu:0.37, fragil:false},
   plomo:      {E:16,   sy:14,   ts:18,   el:50,  nu:0.44, fragil:false},
   tungsteno:  {E:407,  sy:750,  ts:980,  el:2,   nu:0.28, fragil:false},
   laton:      {E:101,  sy:75,   ts:300,  el:68,  nu:0.35, fragil:false},
   oro:        {E:79,   sy:30,   ts:130,  el:45,  nu:0.42, fragil:false},
+  // — Materiales nuevos v4.10 (pedido de Agus, ver Materiales_nuevos_Sim_MatyEns.md) —
+  // Fuentes: MatWeb/ASM (metales), Wikipedia/hojas técnicas de fabricante (polímeros),
+  // NIST/papers de cerámicos técnicos (Munro y similares), Callister (compuestos UD).
+  // Mismo criterio que el resto de PRESETS: condición de referencia razonable, no
+  // "el" valor del material -- 1045/4140 en particular varían mucho según tratamiento
+  // térmico real (ver nota en Materiales_nuevos_Sim_MatyEns.md).
+  aisi1045:        {E:200,  sy:530,  ts:625,  el:12,  nu:0.29, fragil:false}, // normalizado
+  acero4140:       {E:195,  sy:990,  ts:1080, el:16,  nu:0.29, fragil:false}, // templado y revenido (Q&T)
+  aluminio7075:    {E:71.7, sy:480,  ts:570,  el:10,  nu:0.33, fragil:false}, // T6
+  aluminio2024:    {E:73.1, sy:345,  ts:483,  el:18,  nu:0.33, fragil:false}, // T3
+  broncefosforico: {E:110,  sy:360,  ts:500,  el:18,  nu:0.34, fragil:false}, // CuSn8, temple duro (H04)
+  hierronodular:   {E:170,  sy:276,  ts:414,  el:18,  nu:0.28, fragil:false}, // ASTM A536 60-40-18, ferrítico -- dúctil, NO frágil como la fundición gris
+  inconel718:      {E:200,  sy:1100, ts:1275, el:15,  nu:0.29, fragil:false}, // envejecido (AMS 5663 típico)
+  titaniocp2:      {E:105,  sy:275,  ts:380,  el:20,  nu:0.34, fragil:false}, // CP Grado 2, recocido
+  sic:             {E:440,  sy:null, ts:490,  el:0.08, nu:0.19, fragil:true}, // carburo de silicio -- ts=resistencia flexural (no hay fluencia real)
+  si3n4:           {E:300,  sy:null, ts:800,  el:0.08, nu:0.27, fragil:true}, // nitruro de silicio
+  zirconia:        {E:200,  sy:null, ts:1000, el:0.1,  nu:0.30, fragil:true}, // ZrO2 3Y-TZP, tenacificada por transformación
+  gfrp:            {E:45,   sy:null, ts:1020, el:2.5,  nu:0.28, fragil:true}, // fibra de vidrio E-glass/epoxi, unidireccional (dirección de la fibra)
+  kevlarepoxi:     {E:76,   sy:null, ts:1380, el:1.8,  nu:0.34, fragil:true}, // Kevlar 49/epoxi, unidireccional (dirección de la fibra)
+  hdpe:            {E:1.0,  sy:25,   ts:25,   el:200, nu:0.46, fragil:false}, // polietileno alta densidad -- sy=tensión de fluencia; %EL real suele superar 400% pero se topea a 200 (límite de rango que valida el simulador)
+  pp:              {E:1.3,  sy:33,   ts:33,   el:200, nu:0.42, fragil:false}, // polipropileno homopolímero -- %EL real puede llegar a 600% según grado, topeado a 200
+  pvcrigido:       {E:3.0,  sy:52,   ts:52,   el:30,  nu:0.38, fragil:false}, // PVC rígido/UPVC
+  abs:             {E:2.3,  sy:42,   ts:42,   el:20,  nu:0.35, fragil:false},
+  pc:              {E:2.3,  sy:62,   ts:65,   el:100, nu:0.37, fragil:false}, // policarbonato -- ν=0.37 confirmado (Wikipedia)
 };
 
 // FIX (integración Unidad 3): propiedades de fractura/fatiga/fluencia agrupadas
@@ -73,6 +104,19 @@ PRESETS.fragil.frac     = { kic:18 };
 PRESETS.hormigon.frac   = { kic:1.0 };
 PRESETS.nylon.frac      = { kic:3  };
 
+// FIX (v4.10): K_IC de los 3 cerámicos técnicos nuevos -- son justamente el
+// caso de cátedra que muestra que "cerámica" no es sinónimo de "frágil como
+// el vidrio": el SiC y sobre todo la ZrO2 (tenacificada por transformación
+// de fase) tienen K_IC bastante más alto que la Al2O3 ya cargada (4,5).
+// Sin Paris/Dorn -- fatiga y fluencia en cerámicos técnicos siguen otros
+// modelos que no están implementados acá (mismo criterio que Al2O3/hormigón).
+// Ninguno de los otros 15 materiales nuevos (metales/polímeros/compuestos)
+// tiene K_IC/Paris/Dorn con una fuente única y confiable -- quedan sin `frac`,
+// igual que varios de los 23 originales.
+PRESETS.sic.frac      = { kic:6.8 };
+PRESETS.si3n4.frac    = { kic:5   };
+PRESETS.zirconia.frac = { kic:9   };
+
 // FIX (Fase 6a — unificar Dureza con PRESETS, mismo problema que Fase 1 pero
 // en Ensayo no destructivo): ROCKWELL_REF/BRINELL_REF/VICKERS_REF vivían cada
 // una con sus propios valores de dureza para los mismos materiales, sin
@@ -98,6 +142,29 @@ PRESETS.cobre.dureza     = { hb:45,  hv:50  };
 PRESETS.oro.dureza       = { hb:25,  hv:25  };
 PRESETS.plata.dureza     = { hb:25,  hv:27  };
 PRESETS.ceramica.dureza  = { hv:1700 };
+
+// FIX (v4.10): dureza de los materiales nuevos. Mismo criterio que arriba --
+// hb/hv se completan usando la aproximación HV≈HB para dureza baja/media
+// (<200 HB, ver FIX #34 en dureza-brinell.js) cuando el material solo trae
+// un dato real (HB o HV, no ambos); por encima de 200 HB (acero4140) esa
+// aproximación pierde precisión y se deja hv sin completar en vez de
+// inventarlo. Los 5 polímeros nuevos (HDPE/PP/PVC rígido/ABS/PC) y los 2
+// compuestos (GFRP/Kevlar) quedan sin dureza acá a propósito: sus escalas
+// reales (Shore D, Rockwell R/M) usan un indentador y una fórmula distintos
+// a los que implementa este simulador (HB/HV/HRB-HRC), así que cargar un
+// número ahí sería aplicar mal la escala -- mismo motivo por el que Nylon y
+// Fibra de carbono ya quedaban afuera de esta tabla.
+PRESETS.aisi1045.dureza        = { hb:179, hv:179, hr:{scale:'B', value:88} };
+PRESETS.acero4140.dureza       = { hb:310,         hr:{scale:'C', value:30} };
+PRESETS.aluminio7075.dureza    = { hb:150, hv:150, hr:{scale:'B', value:87} };
+PRESETS.aluminio2024.dureza    = { hb:120, hv:137, hr:{scale:'B', value:75} };
+PRESETS.broncefosforico.dureza = { hb:150, hv:155, hr:{scale:'B', value:88} };
+PRESETS.hierronodular.dureza   = { hb:165, hv:165, hr:{scale:'B', value:83} };
+PRESETS.inconel718.dureza      = {                 hr:{scale:'C', value:40} };
+PRESETS.titaniocp2.dureza      = { hb:160, hv:160, hr:{scale:'B', value:75} };
+PRESETS.sic.dureza             = { hv:3200 };
+PRESETS.si3n4.dureza           = { hv:900  }; // rango bibliográfico amplio (600-1200 HV según fuente)
+PRESETS.zirconia.dureza        = { hv:1250 };
 
 function applyPreset(prefix, val) {
   val = val || document.getElementById(prefix==='e'?'e_preset':prefix+'_preset')?.value || '';

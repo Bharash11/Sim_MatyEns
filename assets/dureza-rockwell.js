@@ -9,6 +9,12 @@
 const ROCKWELL_SLIDER = {
   acero:61, aceroinox:74, fragil:16, aluminio:48, titanio:31,
   niquel:29, molibdeno:68, magnesio:36, zinc:16, tungsteno:18, laton:42,
+  // FIX (v4.10): valores de slider calculados (no adivinados) resolviendo la
+  // misma fórmula que usa dzUpdateRk() para el HR objetivo de cada material
+  // (PRESETS[x].dureza.hr) en su escala real -- mismo método con el que se
+  // verificaron los 11 valores de arriba antes de agregar estos.
+  aisi1045:85, acero4140:26, aluminio7075:83, aluminio2024:68,
+  broncefosforico:85, hierronodular:78, inconel718:37, titaniocp2:68,
 };
 const ROCKWELL_REF = {};
 for (const [key, slider] of Object.entries(ROCKWELL_SLIDER)) {
@@ -93,17 +99,36 @@ function dzUpdateRk(){
       cmpEl.innerHTML = `La referencia de este material es en escala HR${ref.scale} -- elegí esa fila en la tabla para comparar.`;
     }
   }
-  // FIX #9 (y de paso corrige el glitch visual #25): la profundidad ahora se
-  // normaliza a una fracción 0..1 de la altura del recuadro y se acota, así
-  // la marca de indentación nunca queda dibujada fuera del recuadro "MATERIAL".
-  const top=30, bottom=120;
-  const depth = top + depthFrac*(bottom-top-2); // -2 de margen para no tocar el borde
+  // FIX v4.9 (reemplaza el FIX #9/#25 anterior): el dibujo viejo tenía el
+  // penetrador dibujado al revés -- un triángulo con la punta ARRIBA (fuera
+  // del material) que se iba ENSANCHANDO a medida que "bajaba" adentro del
+  // material, como un carámbano invertido. Un penetrador cónico real es al
+  // revés: la punta (angosta) es la que entra al material, y la parte ancha
+  // (el cuerpo del penetrador) queda afuera, por encima de la superficie.
+  // Ahora se dibujan DOS formas separadas, con esa orientación correcta:
+  // 1) la herramienta (fija, solo su contorno, apoyada sobre la superficie),
+  // 2) la huella que deja adentro del material (un triángulo angosto que
+  //    SÍ crece en profundidad Y en ancho de superficie a medida que penetra
+  //    más -- igual que la huella real de un cono se ve más ancha cuanto más
+  //    se hunde).
+  const rectX=20, rectY=34, rectW=220, rectH=82, rectBottom=rectY+rectH;
+  const cx=130;
+  const tipY = rectY + depthFrac*(rectH-8); // punta de la huella, nunca toca el borde inferior
+  const rimR = 7 + depthFrac*24; // ancho de la huella en la superficie: crece con la profundidad
   const svg = document.getElementById('dz_rkDepthSvg');
   svg.innerHTML = `
-    <rect x="20" y="30" width="220" height="90" fill="var(--surface)" stroke="var(--border)"/>
-    <text x="130" y="20" text-anchor="middle" fill="var(--muted)" font-size="10">MATERIAL</text>
-    <polygon points="130,10 145,${depth} 115,${depth}" fill="var(--neck)" opacity="0.9"/>
-    <ellipse cx="130" cy="${depth}" rx="16" ry="4" fill="var(--frac)" opacity="0.8"/>
+    <rect x="${rectX}" y="${rectY}" width="${rectW}" height="${rectH}" fill="var(--surface)" stroke="var(--border)"/>
+    <text x="${rectX+8}" y="${rectY+15}" text-anchor="start" fill="var(--muted)" font-size="9" letter-spacing="1">MATERIAL</text>
+    <!-- huella dentro del material: punta abajo, se ensancha hacia la superficie -->
+    <polygon points="${cx},${tipY} ${cx-rimR},${rectY} ${cx+rimR},${rectY}" fill="var(--neck)" opacity="0.55" stroke="var(--neck)" stroke-width="1"/>
+    <!-- guía de profundidad -->
+    <line x1="${cx}" y1="${rectY}" x2="${cx}" y2="${tipY}" stroke="var(--muted)" stroke-width="1" stroke-dasharray="2 2" opacity="0.6"/>
+    <!-- marca visible en la superficie (vista desde arriba, aplastada) -->
+    <ellipse cx="${cx}" cy="${rectY}" rx="${rimR}" ry="3.5" fill="var(--frac)" opacity="0.85"/>
+    <!-- herramienta: cuerpo fijo por encima de la superficie, apoyando la punta justo en el borde -->
+    <polygon points="${cx},${rectY} ${cx-15},${rectY-22} ${cx+15},${rectY-22}" fill="none" stroke="var(--text)" stroke-width="1.5" opacity="0.75"/>
+    <rect x="${cx-6}" y="${rectY-30}" width="12" height="9" fill="var(--surface3)" stroke="var(--text)" stroke-width="1" opacity="0.75"/>
+    <text x="${rectX+rectW-6}" y="${rectY+15}" text-anchor="end" fill="var(--muted)" font-size="8">profundidad</text>
     <text x="130" y="150" text-anchor="middle" fill="var(--muted)" font-size="10">${slider<40?'material blando: huella profunda':(slider>70?'material duro: huella superficial':'material intermedio')}</text>
   `;
 }

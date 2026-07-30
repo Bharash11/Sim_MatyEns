@@ -10,6 +10,17 @@ const VICKERS_PD = {
   titanio:{p:1000,d:0.073}, niquel:{p:500,d:0.111}, molibdeno:{p:1000,d:0.106},
   magnesio:{p:300,d:0.099}, zinc:{p:300,d:0.121}, tungsteno:{p:1000,d:0.077},
   laton:{p:500,d:0.124}, plata:{p:200,d:0.117}, oro:{p:200,d:0.122},
+  // FIX (v4.10): mismo criterio de carga que ya usaba esta tabla -- ferrosos/
+  // duros con P=1000 (aisi1045, hierronodular, titaniocp2, cerámicos nuevos,
+  // igual que acero/titanio/cerámica), no ferrosos blandos con P=300-500
+  // (aluminio7075/aluminio2024 como aluminio, broncefosforico como laton). d
+  // se despejó de HV=1,854·(P/1000)/d² para reproducir el HV de
+  // PRESETS[x].dureza.hv con esa carga. acero4140 queda afuera: por encima de
+  // 200 HB la aproximación HV≈HB pierde precisión (ver dureza-shared arriba)
+  // y no se encontró un HV publicado propio para esta condición.
+  aisi1045:{p:1000,d:0.102}, aluminio7075:{p:300,d:0.061}, aluminio2024:{p:300,d:0.064},
+  broncefosforico:{p:500,d:0.077}, hierronodular:{p:1000,d:0.106}, titaniocp2:{p:1000,d:0.108},
+  sic:{p:1000,d:0.024}, si3n4:{p:1000,d:0.045}, zirconia:{p:1000,d:0.0385},
 };
 const VICKERS_REF = {};
 for (const [key, pd] of Object.entries(VICKERS_PD)) {
